@@ -1,0 +1,60 @@
+{
+  "name": "optionalist",
+  "version": "1.0.0",
+  "description": "The commandline parser for TypeScript",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc --build src/tsconfig.json",
+    "test": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sugoroku-y/optionalist.git"
+  },
+  "author": {
+    "name": "YEBISUYA Sugoroku",
+    "email": "yebisuya@gmail.com",
+    "url": "https://qiita.com/sugoroku_y"
+  },
+  "license": "MIT",
+  "keywords": [
+    "argument",
+    "args",
+    "option",
+    "parser",
+    "parsing",
+    "cli",
+    "command"
+  ],
+  "bugs": {
+    "url": "https://github.com/sugoroku-y/optionalist/issues"
+  },
+  "homepage": "https://github.com/sugoroku-y/optionalist#readme",
+  "devDependencies": {
+    "@types/jest": "^26.0.9",
+    "@types/node": "^14.0.27",
+    "jest": "^26.2.2",
+    "ts-jest": "^26.1.4",
+    "typescript": "^3.9.7"
+  },
+  "jest": {
+    "testMatch": [
+      "**/src/optinalist.test.ts"
+    ],
+    "transform": {
+      "\\.ts$": "ts-jest"
+    },
+    "globals": {
+      "ts-jest": {
+        "tsConfig": "src/tsconfig.json"
+      }
+    },
+    "collectCoverage": true,  
+    "collectCoverageFrom": [  
+      "src/index.ts"  
+    ]  
+  },
+  "engines": {
+    "node": ">=10.3"
+  }
+}
