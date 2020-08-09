@@ -225,8 +225,8 @@ function error(strings: TemplateStringsArray, ...args: any[]): never {
 
 /**
  * コマンドラインをoptMapにしたがってパースする。
- * @param optMap パーズするための情報。
- * @param args パーズするコマンドライン。
+ * @param optMap 解析するための情報。
+ * @param args 解析するコマンドライン。
  * 省略時はprocess.argvの3つめ以降をパースする
  * @throws optMapに問題がある場合はErrorを投げる。
  * argsに問題がある場合にはstringを投げる。
@@ -406,7 +406,7 @@ export function parse<OptMap extends OptionInformationMap>(
     }));
   } catch (ex) {
     if (optMap[helpString]?.showUsageOnError && typeof ex === 'string') {
-      // パーズ時にエラーが発生した場合はヘルプを表示して終了する設定だった場合
+      // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
       process.stderr.write(`${ex}\n\n${makeHelpString(optMap)}`);
       process.exit(1);
     }
@@ -415,7 +415,7 @@ export function parse<OptMap extends OptionInformationMap>(
 }
 
 /**
- * 実行中のコマンドに用意されているpackage.jsonの内容をパーズして返す。
+ * 実行中のコマンドに用意されているpackage.jsonの内容を解析して返す。
  *
  * @returns
  */
@@ -444,7 +444,7 @@ function loadPackageJson() {
           continue;
         }
       }
-      // node_modulesを見つけたらそこのpackage.jsonを読み込んでパーズ
+      // node_modulesを見つけたらそこのpackage.jsonを読み込んで解析
       return JSON.parse(
         fs.readFileSync(path.join(dirname, 'package.json'), 'utf8')
       );
