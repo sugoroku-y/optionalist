@@ -134,6 +134,11 @@ test('optionalist usage error', () => {
   );
 });
 test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--charlie', '--', '-111'])).toThrow(
+    '--charlie must be specified alone.'
+  );
+});
+test('optionalist usage error', () => {
   expect(() => optionalist.parse(OPTMAP, ['--alpha', 'beta', '--charlie'])).toThrow(
     '--charlie must be specified alone.'
   );
