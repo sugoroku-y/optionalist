@@ -422,7 +422,15 @@ export function parse<OptMap extends OptionInformationMap>(
  */
 function loadPackageJson() {
   for (
-    let dirname = __dirname, prev;
+    let dirname =
+        ('mainModule' in process)
+          ? path.dirname(
+              ((process as unknown) as {mainModule: {filename: string}})[
+                'mainModule'
+              ].filename
+            )
+          : __dirname,
+      prev;
     dirname !== prev;
     prev = dirname, dirname = path.dirname(prev)
   ) {
