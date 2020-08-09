@@ -77,6 +77,11 @@ test('optionalist unnamed', () => {
     'bbb',
     'ccc',
   ]);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  } else if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
   expect(options[optionalist.unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
 });
 test('optionalist unnamed', () => {
@@ -88,6 +93,11 @@ test('optionalist unnamed', () => {
     '-bbb',
     '-ccc',
   ]);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  } else if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
   expect(options[optionalist.unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
 });
 test('optionalist usage error', () => {

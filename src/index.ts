@@ -164,14 +164,15 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = {
  */
 type Options<OPTMAP extends OptionInformationMap> = (
   | ({
+      [unnamed]: string[];
+    } & ({
       [N in OptionsEssential<OPTMAP>]: OptionType<OPTMAP[N]>;
     } &
       {
         [N in OptionsOptional<OPTMAP>]?: OptionType<OPTMAP[N]>;
-      })
+      }))
   | OptionsAlone<OPTMAP>
 ) & {
-  [unnamed]: string[];
   [helpString]: string;
 };
 
