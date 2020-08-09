@@ -532,7 +532,7 @@ function indent(text: string | undefined, indent: string): string {
     return '';
   }
   // 、行末の空白を除去しつつ一行ごとに分割
-  const lines = text.replace(/^[ \t]+$/,'').split(/[ \t]*\r?\n/);
+  const lines = text.replace(/^[ \t]+$/, '').split(/[ \t]*\r?\n/);
   // 行頭の空白で共通のものを抽出
   let srcIindent: number | undefined;
   for (const line of lines) {
