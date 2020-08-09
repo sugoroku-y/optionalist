@@ -260,9 +260,9 @@ export function parse<OptMap extends OptionInformationMap>(
       // エイリアスを展開
       optMapAlias[optArg] = {name, info};
       if (info.alias) {
-        for (const alias of Array.isArray(info.alias)
-          ? info.alias
-          : [info.alias]) {
+        for (const alias of typeof info.alias === 'string'
+          ? [info.alias]
+          : info.alias) {
           const optAlias = `${alias.length > 1 ? '--' : '-'}${alias}`;
           optMapAlias[optAlias] = {name, info};
         }
