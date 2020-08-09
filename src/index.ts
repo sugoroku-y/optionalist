@@ -304,6 +304,10 @@ export function parse<OptMap extends OptionInformationMap>(
     let prevOpt: string | undefined;
     for (const arg of toIterable(itr)) {
       if (arg === '--') {
+        if (aloneOpt) {
+          // 単独で指定されるはずなのに他のオプションが指定された
+          usage`${aloneOpt || arg} must be specified alone.`;
+        }
         // --以降はすべて無名オプション
         unnamedList.push(...toIterable(itr));
         break;
