@@ -164,16 +164,16 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = {
  */
 type Options<OPTMAP extends OptionInformationMap> = (
   | ({
-      [unnamed]: string[];
+      readonly [unnamed]: readonly string[];
     } & ({
-      [N in OptionsEssential<OPTMAP>]: OptionType<OPTMAP[N]>;
+      readonly [N in OptionsEssential<OPTMAP>]: OptionType<OPTMAP[N]>;
     } &
       {
-        [N in OptionsOptional<OPTMAP>]?: OptionType<OPTMAP[N]>;
+        readonly [N in OptionsOptional<OPTMAP>]?: OptionType<OPTMAP[N]>;
       }))
   | OptionsAlone<OPTMAP>
 ) & {
-  [helpString]: string;
+  readonly [helpString]: string;
 };
 
 function checkNever(obj: never, message?: string): never {
@@ -395,13 +395,13 @@ export function parse<OptMap extends OptionInformationMap>(
       }
       // 無名オプションを追加
       Object.defineProperty(options, unnamed, {
-        get: () => unnamedList.slice(0),
+        value: unnamedList,
       });
     } else if (unnamedList.length > 0) {
       usage`${aloneOpt} must be specified alone.`;
     }
     // ヘルプ用文字列を追加して終了
-    return Object.defineProperty(options, helpString, {
+    return Object.defineProperty(Object.freeze(options), helpString, {
       get: () => makeHelpString(optMap),
     });
   } catch (ex) {
