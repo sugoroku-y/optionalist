@@ -246,10 +246,6 @@ export function parse<OptMap extends OptionInformationMap>(
         itr.next();
         return itr;
       })();
-    // 無名オプション
-    const unnamedList: string[] = [];
-    // 名前付きオプション
-    const options: {[name: string]: string | number | true} = {};
     // エイリアスを含めたオプションの詳細マップ
     const optMapAlias: {
       [name: string]: {name: string; info: OptionInformation};
@@ -299,6 +295,12 @@ export function parse<OptMap extends OptionInformationMap>(
         }
       }
     }
+    // ↑ optMapの不備はここから上でerror`～`で投げる
+    // ↓ コマンドラインの不備はここから下でusage`～`で投げる 
+    // 無名オプション
+    const unnamedList: string[] = [];
+    // 名前付きオプション
+    const options: {[name: string]: string | number | true} = {};
     // 単独で指定されるはずのオプション
     let aloneOpt: string | undefined;
     // 一つ前に指定されたオプション
