@@ -393,18 +393,17 @@ export function parse<OptMap extends OptionInformationMap>(
           optMap[unnamed]?.example ?? 'unnamed_parameters'
         } specified(up to ${max}).`;
       }
+      // 無名オプションを追加
+      Object.defineProperty(options, unnamed, {
+        get: () => unnamedList.slice(0),
+      });
     } else if (unnamedList.length > 0) {
       usage`${aloneOpt} must be specified alone.`;
     }
-    // 無名オプションとヘルプ用文字列を追加して終了
-    return Object.defineProperties(options, {
-      [unnamed]: {
-        get: () => unnamedList.slice(0),
-      },
-      [helpString]: {
-        get: () => makeHelpString(optMap),
-      },
-    }) as Options<OptMap>;
+    // ヘルプ用文字列を追加して終了
+    return Object.defineProperty(options, helpString, {
+      get: () => makeHelpString(optMap),
+    });
   } catch (ex) {
     if (optMap[helpString]?.showUsageOnError && typeof ex === 'string') {
       // パーズ時にエラーが発生した場合はヘルプを表示して終了する設定だった場合
