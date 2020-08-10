@@ -5,6 +5,7 @@ The commandline parser for TypeScript.
 optionalistはTypeScript向けに作られたコマンドラインパーザーです。
 
 [![Build Status](https://travis-ci.org/sugoroku-y/optionalist.svg?branch=master)](https://travis-ci.org/sugoroku-y/optionalist)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 ## 使い方
 
