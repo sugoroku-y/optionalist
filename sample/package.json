@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "name": "sample",
+  "version": "0.0.1",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsc --build src/tsconfig.json"
+  },
+  "dependencies": {
+    "optionalist": "file:.."
+  },
+  "devDependencies": {
+    "typescript": "^3.9.7"
+  }
+}
