@@ -176,6 +176,18 @@ type Options<OPTMAP extends OptionInformationMap> = (
   readonly [helpString]: string;
 };
 
+/**
+ * never型になっているかどうかチェックする。
+ * 
+ * never型であれば本来この関数は呼び出されないはずだが、
+ * TypeScript以外から使用されたときには
+ * この関数が呼び出される可能性もあるので
+ * 実装としては例外を投げておく。
+ *
+ * @param {never} obj
+ * @param {string} [message]
+ * @returns {never}
+ */
 function checkNever(obj: never, message?: string): never {
   throw new Error(message ?? 'Illegal value: ${obj}');
 }
