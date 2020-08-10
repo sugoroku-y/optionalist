@@ -1,6 +1,6 @@
 {
   "name": "optionalist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The commandline parser for TypeScript",
   "main": "lib/index.js",
   "scripts": {
@@ -49,10 +49,10 @@
         "tsConfig": "src/tsconfig.json"
       }
     },
-    "collectCoverage": true,  
-    "collectCoverageFrom": [  
-      "src/index.ts"  
-    ]  
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+      "src/index.ts"
+    ]
   },
   "engines": {
     "node": ">=10.14"
