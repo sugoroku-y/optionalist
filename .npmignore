@@ -3,3 +3,4 @@
 /coverage/
 /.vscode/
 /sample/
+.travis.yml
