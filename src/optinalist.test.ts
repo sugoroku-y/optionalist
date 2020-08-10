@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as optionalist from './index';
 
 const OPTMAP = {
@@ -215,11 +217,12 @@ test('optionalist invalid optMap', () => {
   );
 });
 test('optionalist helpstring', () => {
-  expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString]).toBe(`Version: optionalist 1.0.0
+  const {name: packageName, version} = JSON.parse(fs.readFileSync(path.join(path.dirname(__dirname), 'package.json'), 'utf8'))
+  expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString]).toBe(`Version: ${packageName} ${version}
 Usage:
-  npx optionalist --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--] [argument...]
-  npx optionalist --charlie
-  npx optionalist --echo parameter
+  npx ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--] [argument...]
+  npx ${packageName} --charlie
+  npx ${packageName} --echo parameter
 
 Description:
   UnitTest for optionalist.
