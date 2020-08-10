@@ -236,10 +236,11 @@ function error(strings: TemplateStringsArray, ...args: any[]): never {
 }
 
 /**
- * コマンドラインをoptMapにしたがってパースする。
+ * コマンドラインをoptMapにしたがって解析する。
+ * 
  * @param optMap 解析するための情報。
  * @param args 解析するコマンドライン。
- * 省略時はprocess.argvの3つめ以降をパースする
+ * 省略時はprocess.argvの3つめから開始する。
  * @throws optMapに問題がある場合はErrorを投げる。
  * argsに問題がある場合にはstringを投げる。
  */
