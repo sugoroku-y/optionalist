@@ -25,6 +25,14 @@ type OptionInformation = Readonly<
          */
         example?: string;
         /**
+         * 文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
+         */
+        constraints?: readonly string[];
+        /**
+         * constraintsを指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
+         */
+        ignoreCase?: true;
+        /**
          * - `alone`を指定すると、単独で指定するオプションとなる。
          * - `required`を指定すると、必須オプションとなる。
          * - ['default', string]を指定すると、省略時に指定した値を設定する。
@@ -40,6 +48,21 @@ type OptionInformation = Readonly<
          * ヘルプ文字列でパラメーターとして使用される文字列(ex. --count max_count)
          */
         example?: string;
+        /**
+         * 数値として指定できる制約。配列の場合は、ここで設定した値以外を指定するとエラーになる。
+         */
+        constraints?:
+          | readonly number[]
+          | {
+              /**
+               * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+               */
+              min?: number;
+              /**
+               * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+               */
+              max?: number;
+            };
         /**
          * - `alone`を指定すると、単独で指定するオプションとなる。
          * - `required`を指定すると、必須オプションとなる。
@@ -117,15 +140,29 @@ type OptionInformationMap = Readonly<{
  * parseの返値の各プロパティの型
  */
 type OptionType<OptionInfo extends OptionInformation> =
-  // typeがbooleanなら真偽値だが、falseにすることはできないのでtrueになる。
+  // typeの値で振り分け
   OptionInfo extends {type: 'boolean'}
-    ? true // typeがnumberなら数値型
+    ? // typeがbooleanなら真偽値
+      true // だが、falseにすることはできないのでtrueになる。
     : OptionInfo extends {type: 'number'}
-    ? number // typeがstring、もしくは省略時には文字列型
+    ? // typeがnumberなら数値型
+      OptionInfo extends {constraints: readonly number[]}
+      ? // constraintsが指定されていれば数値の列挙型
+        OptionInfo['constraints'][number]
+      : number
     : OptionInfo extends {type: 'string'}
-    ? string
+    ? // typeがstringなら文字列型
+      OptionInfo extends {constraints: readonly string[]}
+      ? // constraintsが指定されていれば文字列の列挙型
+        OptionInfo['constraints'][number]
+      : string
     : OptionInfo extends {type: any}
-    ? never
+    ? // typeにその他の値が指定されていることはない
+      never
+    : // type省略時にも文字列型
+    OptionInfo extends {constraints: readonly string[]}
+    ? // constraintsが指定されていれば文字列の列挙型
+      OptionInfo['constraints'][number]
     : string;
 
 /**
@@ -236,6 +273,11 @@ function error(strings: TemplateStringsArray, ...args: any[]): never {
   );
 }
 
+function isNumberArray(
+  o: readonly number[] | {min?: number; max?: number}
+): o is readonly number[] {
+  return Array.isArray(o);
+}
 /**
  * コマンドラインをoptMapにしたがって解析する。
  *
@@ -373,11 +415,27 @@ export function parse<OptMap extends OptionInformationMap>(
           if (r.done) {
             usage`${arg} needs a number parameter${optional` as the ${info.example}`}`;
           }
-          const value = r.value;
-          if (!isFinite(+value)) {
-            usage`${arg} needs a number parameter${optional` as the ${info.example}`}: ${value}`;
+          const value = +r.value;
+          if (!isFinite(value)) {
+            usage`${arg} needs a number parameter${optional` as the ${info.example}`}: ${
+              r.value
+            }`;
           }
-          options[name] = +value;
+          if (info.constraints) {
+            if (isNumberArray(info.constraints)) {
+              if (!info.constraints.includes(value)) {
+                usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+              }
+            } else {
+              if (value < (info.constraints.min ?? -Infinity)) {
+                usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
+              }
+              if (value > (info.constraints.max ?? Infinity)) {
+                usage`${arg} must be less than or equal to ${info.constraints.max}.`;
+              }
+            }
+          }
+          options[name] = value;
           continue;
         }
         /* istanbul ignore next */
@@ -387,6 +445,21 @@ export function parse<OptMap extends OptionInformationMap>(
           const r = itr.next();
           if (r.done) {
             usage`${arg} needs a parameter${optional` as the ${info.example}`}`;
+          }
+          if (info.constraints) {
+            const [constraints, findValue] = info.ignoreCase
+              ? [
+                  info.constraints.map(s => s.toUpperCase()),
+                  r.value.toUpperCase(),
+                ]
+              : [info.constraints, r.value];
+            const index = constraints.findIndex(v => v === findValue);
+            if (index < 0) {
+              usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+            }
+            if (info.ignoreCase) {
+              r.value = info.constraints[index];
+            }
           }
           options[name] = r.value;
           continue;

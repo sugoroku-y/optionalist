@@ -48,6 +48,10 @@ const options = optionalist.parse({
     type: 'boolean',
     describe: 'Specify when you want to set the watch mode.',
   },
+  type: {
+    describe: 'Specify the type of image.'
+    constraints: ['gif', 'png', 'jpg'],
+  }
   [optionalist.unnamed]: {
     example: 'script_filename',
     describe: 'Specify the script filename(s) to execute.',
@@ -58,6 +62,7 @@ type typeof_options$1 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
+  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 } | {
@@ -109,6 +114,7 @@ type typeof_options$2 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
+  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 } | {
@@ -127,6 +133,7 @@ type typeof_options$3 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
+  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 };
@@ -165,6 +172,14 @@ if (options.watch) {
     `'string'`の場合には文字列型、`'number'`の場合には数値型、  
     `‘boolean'`の場合には真偽値型になります。  
     省略時には`'string'`が指定されたものと見なします。
+  - `constraints`: 文字列型、数値型の場合、指定できる値への制約を指定します。  
+    `type: 'number'`、もしくは`type: 'string'`で、配列が指定された場合は、  
+    その中の1つが指定されていないとエラーになります。  
+    `type: 'number'`で、`min`プロパティを持つオブジェクトが指定された場合は、  
+    `min`未満の値が指定されるとエラーになります。  
+    `type: 'number'`で、`max`プロパティを持つオブジェクトが指定された場合は、  
+    `max`より大きい値が指定されるとエラーになります。  
+    `type: 'boolean'`の場合には指定できません。
   - `example`: ヘルプ用文字列でパラメーターとして使用される文字列を指定します。  
     たとえば`{alpha: {example: 'filename'}}`と指定した場合  
     ヘルプ用文字列では`--alpha filename`のように使用されます。  
@@ -174,7 +189,7 @@ if (options.watch) {
     - `'alone'`: 単独で指定するオプションのときに指定します。  
       ほかのオプションは名前付き、無名にかかわらず指定できなくなります。
     - `'required'`: 指定が必須なオプションのときに指定します。  
-      このオプションが指定されていないとエラーになります。
+      このオプションが指定されていないとエラーになります。  
       `type: 'boolean'`の場合には指定できません。
     - `['default', デフォルト値]`: このオプションが省略されたときに  
       デフォルト値が指定されるようになります。  

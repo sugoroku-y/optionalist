@@ -33,6 +33,34 @@ const OPTMAP = {
   foxtrot: {
     nature: ['default', 'racoondog'],
   },
+  golf: {
+    constraints: [
+      'volkswagen',
+      'sports'
+    ],
+  },
+  hotel: {
+    type: 'number',
+    constraints: [
+      1234,
+      5678,
+      9012,
+    ],
+  },
+  india: {
+    type: 'number',
+    constraints: {
+      min: 1000,
+      max: 9999,
+    }
+  },
+  GOLF: {
+    constraints: [
+      'volkswagen',
+      'sports'
+    ],
+    ignoreCase: true,
+  },
   [optionalist.unnamed]: {
     example: 'argument',
     describe: 'arguments for command'
@@ -81,7 +109,8 @@ test('optionalist unnamed', () => {
   ]);
   if ('charlie' in options) {
     throw new Error('must be unreachable');
-  } else if ('echo' in options) {
+  }
+  if ('echo' in options) {
     throw new Error('must be unreachable');
   }
   expect(options[optionalist.unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
@@ -97,10 +126,101 @@ test('optionalist unnamed', () => {
   ]);
   if ('charlie' in options) {
     throw new Error('must be unreachable');
-  } else if ('echo' in options) {
+  }
+  if ('echo' in options) {
     throw new Error('must be unreachable');
   }
   expect(options[optionalist.unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
+});
+test('optionalist string constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'volkswagen'])
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.golf).toBe('volkswagen');
+});
+test('optionalist string constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'sports'])
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.golf).toBe('sports');
+});
+test('optionalist string constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--GOLF', 'VOLKSWAGEN'])
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.GOLF).toBe('volkswagen');
+});
+test('optionalist string constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--GOLF', 'SPORTS'])
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.GOLF).toBe('sports');
+});
+test('optionalist number constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--hotel', '1234']);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.hotel).toBe(1234);
+});
+test('optionalist number constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--hotel', '5678']);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.hotel).toBe(5678);
+});
+test('optionalist number constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--hotel', '9012']);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.hotel).toBe(9012);
+});
+test('optionalist number range constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '1000']);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.india).toBe(1000);
+});
+test('optionalist number range constraints', () => {
+  const options = optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '9999']);
+  if ('charlie' in options) {
+    throw new Error('must be unreachable');
+  }
+  if ('echo' in options) {
+    throw new Error('must be unreachable');
+  }
+  expect(options.india).toBe(9999);
 });
 test('optionalist usage error', () => {
   expect(() => optionalist.parse(OPTMAP, [])).toThrow('--delta required');
@@ -143,6 +263,31 @@ test('optionalist usage error', () => {
 test('optionalist usage error', () => {
   expect(() => optionalist.parse(OPTMAP, ['--alpha', 'beta', '--charlie'])).toThrow(
     '--charlie must be specified alone.'
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'german'])).toThrow(
+    '--golf must be one of volkswagen, sports'
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'SPORTS'])).toThrow(
+    '--golf must be one of volkswagen, sports'
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--delta', 'required', '--hotel', '0'])).toThrow(
+    '--hotel must be one of 1234, 5678, 9012.'
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '999'])).toThrow(
+    '--india must be greater than or equal to 1000.'
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '10000'])).toThrow(
+    '--india must be less than or equal to 9999.'
   );
 });
 test('optionalist usage error', () => {
@@ -220,7 +365,7 @@ test('optionalist helpstring', () => {
   const {name: packageName, version} = JSON.parse(fs.readFileSync(path.join(path.dirname(__dirname), 'package.json'), 'utf8'))
   expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString]).toBe(`Version: ${packageName} ${version}
 Usage:
-  npx ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--] [argument...]
+  npx ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--golf parameter] [--hotel parameter] [--india parameter] [--GOLF parameter] [--] [argument...]
   npx ${packageName} --charlie
   npx ${packageName} --echo parameter
 
@@ -236,6 +381,10 @@ Options:
   --delta parameter
   --echo parameter
   --foxtrot parameter
+  --golf parameter
+  --hotel parameter
+  --india parameter
+  --GOLF parameter
   [--] [argument...]
     arguments for command
 `);
