@@ -474,7 +474,7 @@ test('showUsageOnError', () => {
   ).toMatchInlineSnapshot(`
 "--aaa required
 
-Version: optionalist 2.0.0
+Version: optionalist 2.0.2
 Usage:
   npx optionalist --aaa parameter [--] [unnamed_parameters...]
 
@@ -488,7 +488,7 @@ Options:
 test('helpString', () => {
   expect(optionalist.parse({ a: {} }, [])[optionalist.helpString])
     .toMatchInlineSnapshot(`
-"Version: optionalist 2.0.0
+"Version: optionalist 2.0.2
 Usage:
   npx optionalist [-a parameter]
 
