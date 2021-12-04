@@ -8,6 +8,12 @@ function hasProperty<NAME extends string | number | symbol>(
   return typeof o === 'object' && o !== null && name in o;
 }
 
+type ExcludeEmpty<T> = { [K in never]: never } extends T ? never : T;
+
+type Normalize<T> = T extends { [K in never]: never }
+  ? { [K in keyof T]: T[K] }
+  : never;
+
 /**
  * 各オプションの説明文を取得するためのシンボル。
  */
@@ -18,86 +24,142 @@ export const helpString: unique symbol = Symbol('helpstring');
 export const unnamed: unique symbol = Symbol('unnamed');
 
 /**
+ * 共通オプション情報
+ */
+type OptionBase<T extends string | number | boolean> = (T extends boolean
+  ? { readonly type: 'boolean' }
+  : T extends number
+  ? { type: 'number' }
+  : { readonly type?: 'string' }) & {
+  /**
+   * オプションの型。
+   *
+   * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
+   * - `number`を指定すると数値型のオプションとなる。
+   * - `boolean`を指定すると真偽値型のオプションとなる。
+   */
+  type?: 'string' | 'number' | 'boolean';
+  /**
+   * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
+   */
+  alias?: string | readonly string[];
+  /**
+   * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
+   */
+  describe?: string;
+  /**
+   * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
+   */
+  example?: string;
+  /**
+   * aloneにtrueを指定すると、単独で指定するオプションとなる。
+   */
+  alone?: true;
+  /**
+   * requiredにtrueを指定すると、必須オプションとなる。
+   */
+  required?: true;
+  /**
+   * defaultに値を指定すると、省略時にその値が設定される。
+   */
+  default?: T extends string | number ? T : never;
+};
+
+/** オプションの特性無し */
+type OptionNonNature = {
+  /** alone指定なし */
+  alone?: never;
+  /** required指定なし */
+  required?: never;
+  /** default指定なし */
+  default?: never;
+};
+
+/** オプションの特性: 単独で指定 */
+type OptionAlone = {
+  alone: true;
+  /**
+   *
+   * **aloneを指定したときは、 同時にrequiredを指定できない**。
+   */
+  required?: never;
+  /**
+   *
+   * **aloneを指定したときは、同時にdefaultを指定できない。**
+   */
+  default?: never;
+};
+
+/** オプションの特性: 省略不可 */
+type OptionRequired = {
+  required: true;
+  /**
+   *
+   * **requiredを指定したときは、同時にaloneを指定できない。**
+   */
+  alone?: never;
+  /**
+   *
+   * **requiredを指定したときは、同時にdefaultを指定できない。**
+   */
+  default?: never;
+};
+
+/** オプションの特性: 省略時のデフォルト値あり */
+type OptionDefaultSpecified<T extends string | number> = {
+  default: T;
+  /**
+   *
+   * **defaultを指定したときは、同時にaloneを指定できない。**
+   */
+  alone?: never;
+  /**
+   *
+   * **defaultを指定したときは、同時にrequiredを指定できない。**
+   */
+  required?: never;
+};
+
+/** 文字型/数値型オプションの共通情報 */
+type OptionWithValue<T extends string | number> = OptionBase<T> &
+  (OptionNonNature | OptionAlone | OptionRequired | OptionDefaultSpecified<T>);
+
+/** 文字列型のオプション情報 */
+type StringOption = OptionWithValue<string> & {
+  /**
+   * 文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
+   */
+  constraints?: readonly string[];
+  /**
+   * constraintsを指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
+   */
+  ignoreCase?: true;
+};
+/** 数値型のオプション情報 */
+type NumberOption = OptionWithValue<number> & {
+  /**
+   * 数値として指定できる制約。配列の場合は、ここで設定した値以外を指定するとエラーになる。
+   */
+  constraints?:
+    | readonly number[]
+    | {
+        /**
+         * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+         */
+        readonly min?: number;
+        /**
+         * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+         */
+        readonly max?: number;
+      };
+};
+/** 真偽値型のオプション情報 */
+type FlagOption = OptionBase<boolean> & (OptionNonNature | OptionAlone);
+
+/**
  * 各プロパティの詳細情報
  */
-type OptionInformation = Readonly<
-  (
-    | {
-        /**
-         * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
-         */
-        type?: 'string';
-        /**
-         * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
-         */
-        example?: string;
-        /**
-         * 文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
-         */
-        constraints?: readonly string[];
-        /**
-         * constraintsを指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
-         */
-        ignoreCase?: true;
-        /**
-         * - `alone`を指定すると、単独で指定するオプションとなる。
-         * - `required`を指定すると、必須オプションとなる。
-         * - ['default', string]を指定すると、省略時に指定した値を設定する。
-         */
-        nature?: 'alone' | 'required' | readonly ['default', string];
-      }
-    | {
-        /**
-         * - `number`を指定すると数値型のオプションとなる。
-         */
-        type: 'number';
-        /**
-         * ヘルプ文字列でパラメーターとして使用される文字列(ex. --count max_count)
-         */
-        example?: string;
-        /**
-         * 数値として指定できる制約。配列の場合は、ここで設定した値以外を指定するとエラーになる。
-         */
-        constraints?:
-          | readonly number[]
-          | {
-              /**
-               * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
-               */
-              min?: number;
-              /**
-               * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
-               */
-              max?: number;
-            };
-        /**
-         * - `alone`を指定すると、単独で指定するオプションとなる。
-         * - `required`を指定すると、必須オプションとなる。
-         * - ['default', string]を指定すると、省略時に指定した値を設定する。
-         */
-        nature?: 'alone' | 'required' | readonly ['default', number];
-      }
-    | {
-        /**
-         * - `boolean`を指定すると真偽値型のオプションとなる。
-         */
-        type: 'boolean';
-        /**
-         * - `alone`を指定すると、単独で指定するオプションとなる。
-         */
-        nature?: 'alone';
-      }
-  ) & {
-    /**
-     * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
-     */
-    alias?: string | readonly string[];
-    /**
-     * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
-     */
-    describe?: string;
-  }
->;
+type OptionInformation = Normalize<NumberOption | FlagOption | StringOption>;
 
 /**
  * parseの第一引数の型。
@@ -106,7 +168,7 @@ type OptionInformationMap = Readonly<{
   /**
    * 無名オプションの説明などを指定する。
    */
-  [unnamed]?: {
+  [unnamed]?: Readonly<{
     /**
      * コマンドラインオプションの説明で使用する無名オプションの名前。
      */
@@ -123,11 +185,11 @@ type OptionInformationMap = Readonly<{
      * 無名オプションの最大個数。
      */
     max?: number;
-  };
+  }>;
   /**
    * このコマンドの説明などを指定する。
    */
-  [helpString]?: {
+  [helpString]?: Readonly<{
     /**
      * このコマンドの説明。
      */
@@ -136,11 +198,11 @@ type OptionInformationMap = Readonly<{
      * コマンドラインに不備があったときに使用方法を表示して終了するときにはtrueを指定する。
      */
     showUsageOnError?: true;
-  };
+  }>;
   /**
    * 名前付きオプションの詳細
    */
-  [name: string]: OptionInformation;
+  [name: string]: Readonly<OptionInformation>;
 }>;
 
 /**
@@ -173,51 +235,59 @@ type OptionType<OptionInfo extends OptionInformation> =
     : string;
 
 /**
- * parseの返値に必ず存在しているプロパティの名前。
+ * parseの返値に必ず存在しているプロパティ。
  */
 type OptionsEssential<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol>]: OPTMAP[N] extends {
-    nature: 'required' | ['default', OptionType<OPTMAP[N]>];
-  }
+  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
+    | {
+        required: true;
+      }
+    | { default: OptionType<OPTMAP[N]> }
     ? N
-    : never;
-}[keyof Omit<OPTMAP, symbol>];
+    : never]: OptionType<OPTMAP[N]>;
+};
 
 /**
- * parseの返値に存在していない可能性のあるプロパティの名前。
+ * parseの返値に存在していない可能性のあるプロパティ。
  */
 type OptionsOptional<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol>]: OPTMAP[N] extends {
-    nature: 'required' | 'alone' | ['default', OptionType<OPTMAP[N]>];
-  }
+  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
+    | {
+        required: true;
+      }
+    | { alone: true }
+    | { default: OptionType<OPTMAP[N]> }
     ? never
-    : N;
-}[keyof Omit<OPTMAP, symbol>];
+    : N]?: OptionType<OPTMAP[N]>;
+};
 
 /**
- * 単独で指定されるオプションの返値の型
+ * 単独で指定されるオプション
  */
 type OptionsAlone<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol>]: OPTMAP[N] extends { nature: 'alone' }
-    ? { [N2 in N]: OptionType<OPTMAP[N2]> }
-    : never;
-}[keyof Omit<OPTMAP, symbol>];
+  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends { alone: true }
+    ? N
+    : never]: OptionType<OPTMAP[N]>;
+};
+
+type OptionUnnamed = {
+  readonly [unnamed]: readonly string[];
+};
+
+type OptionHelpString = {
+  readonly [helpString]: string;
+};
 
 /**
  * parseの返値の型。
  */
-type Options<OPTMAP extends OptionInformationMap> = (
-  | ({
-      readonly [unnamed]: readonly string[];
-    } & ({
-      readonly [N in OptionsEssential<OPTMAP>]: OptionType<OPTMAP[N]>;
-    } & {
-      readonly [N in OptionsOptional<OPTMAP>]?: OptionType<OPTMAP[N]>;
-    }))
-  | OptionsAlone<OPTMAP>
-) & {
-  readonly [helpString]: string;
-};
+type Options<OPTMAP extends OptionInformationMap> = Normalize<
+  (
+    | (OptionUnnamed & OptionsEssential<OPTMAP> & OptionsOptional<OPTMAP>)
+    | ExcludeEmpty<OptionsAlone<OPTMAP>>
+  ) &
+    OptionHelpString
+>;
 
 /**
  * never型になっているかどうかチェックする。
@@ -232,7 +302,6 @@ type Options<OPTMAP extends OptionInformationMap> = (
  * @returns {never}
  */
 function checkNever(obj: never, message?: string): never {
-  /* istanbul ignore next */
   throw new Error(message ?? 'Illegal value: ${obj}');
 }
 
@@ -255,7 +324,7 @@ function toIterable<T>(itr: Iterator<T>): Iterable<T> {
  */
 function optional(strings: TemplateStringsArray, ...args: unknown[]): string {
   return args.every(arg => arg !== undefined && arg !== null)
-    ? strings.reduce((r, e, i) => `${r}${args[i - 1]}${e}`)
+    ? strings.reduce((r, e, i) => r + String(args[i - 1]) + e)
     : '';
 }
 
@@ -265,7 +334,7 @@ function optional(strings: TemplateStringsArray, ...args: unknown[]): string {
  * @param args
  */
 function usage(strings: TemplateStringsArray, ...args: unknown[]): never {
-  throw strings.reduce((r, e, i) => `${r}${args[i - 1]}${e}`);
+  throw strings.reduce((r, e, i) => r + String(args[i - 1]) + e);
 }
 
 /**
@@ -274,7 +343,7 @@ function usage(strings: TemplateStringsArray, ...args: unknown[]): never {
  * @param args
  */
 function error(strings: TemplateStringsArray, ...args: unknown[]): never {
-  throw new Error(strings.reduce((r, e, i) => `${r}${args[i - 1]}${e}`));
+  throw new Error(strings.reduce((r, e, i) => r + String(args[i - 1]) + e));
 }
 
 function isNumberArray(
@@ -298,21 +367,12 @@ export function parse<OptMap extends OptionInformationMap>(
   try {
     // argsが省略されたらprocess.argvの３つ目から始める
     const itr =
-      /* istanbul ignore next */
-      args?.[
-        /* istanbul ignore next */
-        Symbol.iterator
-      ]() ??
-      /* istanbul ignore next */
+      args?.[Symbol.iterator]() ??
       (() => {
-        /* istanbul ignore next */
         const itr = process.argv[Symbol.iterator]();
         //２つスキップ
-        /* istanbul ignore next */
         itr.next();
-        /* istanbul ignore next */
         itr.next();
-        /* istanbul ignore next */
         return itr;
       })();
     // エイリアスを含めたオプションの詳細マップ
@@ -334,39 +394,34 @@ export function parse<OptMap extends OptionInformationMap>(
       }
       if (
         info.type === 'boolean' &&
-        hasProperty(info, 'nature') &&
-        // @ts-expect-error テストのためにエラーになるパターンを指定
-        info.nature === 'required'
+        hasProperty(info, 'required') &&
+        info.required
       ) {
         error`The ${optArg} cannot set to be required.`;
       }
-      if (info.nature?.[0] === 'default') {
-        const defaultValue = info.nature[1];
+      if (hasProperty(info, 'default')) {
+        const defaultValue = info.default;
         switch (info.type) {
-          /* istanbul ignore next */
-          case 'boolean':
-            // boolean型ではdefault値は指定できない
-            error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
-          /* istanbul ignore next */
-          // eslint-disable-next-line no-fallthrough
           case 'number':
             // number型なのに数値以外が指定された
             if (typeof defaultValue !== 'number') {
-              error`The default value of the ${optArg} parameter must be a number.: ${defaultValue}`;
+              return error`The default value of the ${optArg} parameter must be a number.: ${defaultValue}`;
             }
             break;
-          /* istanbul ignore next */
           case undefined:
+          // eslint-disable-next-line no-fallthrough
           case 'string':
             // string型なのに文字列以外が指定された
             if (typeof defaultValue !== 'string') {
-              error`The default value of the ${optArg} parameter must be a string.: ${defaultValue}`;
+              return error`The default value of the ${optArg} parameter must be a string.: ${defaultValue}`;
             }
             break;
-          /* istanbul ignore next */
+          // @ts-expect-error boolean型ではdefault値は指定できないが、念のため
+          case 'boolean':
+            return error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
+          // 他のタイプは指定できないはずだが念のため
           default:
-            /* istanbul ignore next */
-            checkNever(
+            return checkNever(
               info,
               `unknown type: ${
                 (info as OptionInformation).type
@@ -389,7 +444,6 @@ export function parse<OptMap extends OptionInformationMap>(
       if (arg === '--') {
         if (aloneOpt) {
           // 単独で指定されるはずなのに他のオプションが指定された
-          /* istanbul ignore next */
           usage`${aloneOpt || arg} must be specified alone.`;
         }
         // --以降はすべて無名オプション
@@ -405,49 +459,48 @@ export function parse<OptMap extends OptionInformationMap>(
         continue;
       }
       const { name, info } = optMapAlias[arg];
-      if (aloneOpt || (prevOpt && info.nature === 'alone')) {
+      if (aloneOpt || (prevOpt && hasProperty(info, 'alone') && info.alone)) {
         // 単独で指定されるはずなのに他のオプションが指定された
         usage`${aloneOpt || arg} must be specified alone.`;
       }
       prevOpt = arg;
-      if (info.nature === 'alone') {
+      if (hasProperty(info, 'alone') && info.alone) {
         aloneOpt = arg;
       }
       switch (info.type) {
-        /* istanbul ignore next */
         case 'boolean':
           options[name] = true;
           continue;
-        /* istanbul ignore next */
         case 'number': {
           const r = itr.next();
           if (r.done) {
-            usage`${arg} needs a number parameter${optional` as the ${info.example}`}`;
+            return usage`${arg} needs a number parameter${optional` as the ${info.example}`}`;
           }
           const value = +r.value;
           if (!isFinite(value)) {
-            usage`${arg} needs a number parameter${optional` as the ${info.example}`}: ${
+            return usage`${arg} needs a number parameter${optional` as the ${info.example}`}: ${
               r.value
             }`;
           }
           if (info.constraints) {
             if (isNumberArray(info.constraints)) {
               if (!info.constraints.includes(value)) {
-                usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+                return usage`${arg} must be one of ${info.constraints.join(
+                  ', ',
+                )}.`;
               }
             } else {
               if (value < (info.constraints.min ?? -Infinity)) {
-                usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
+                return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
               }
               if (value > (info.constraints.max ?? Infinity)) {
-                usage`${arg} must be less than or equal to ${info.constraints.max}.`;
+                return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
               }
             }
           }
           options[name] = value;
           continue;
         }
-        /* istanbul ignore next */
         case undefined:
         case 'string': {
           const r = itr.next();
@@ -463,7 +516,9 @@ export function parse<OptMap extends OptionInformationMap>(
               : [info.constraints, r.value];
             const index = constraints.findIndex(v => v === findValue);
             if (index < 0) {
-              usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+              return usage`${arg} must be one of ${info.constraints.join(
+                ', ',
+              )}.`;
             }
             if (info.ignoreCase) {
               r.value = info.constraints[index];
@@ -472,9 +527,7 @@ export function parse<OptMap extends OptionInformationMap>(
           options[name] = r.value;
           continue;
         }
-        /* istanbul ignore next */
         default:
-          /* istanbul ignore next */
           checkNever(
             info,
             `unknown type: ${
@@ -486,34 +539,29 @@ export function parse<OptMap extends OptionInformationMap>(
     // 単独オプションが指定されていなかったらデフォルト値の設定を行う
     if (!aloneOpt) {
       for (const [name, info] of Object.entries(optMap)) {
-        /* istanbul ignore next */
         const optArg = `${name.length > 1 ? '--' : '-'}${name}`;
         // 指定されていればスキップ
         if (name in options) {
           continue;
         }
         // requiredなのに指定されていなかったらエラー
-        if (info.nature === 'required') {
+        if (hasProperty(info, 'required') && info.required) {
           usage`${optArg} required`;
         }
         // デフォルト値が指定されていたら設定
-        if (info.nature?.[0] === 'default') {
-          options[name] = info.nature[1];
+        if (hasProperty(info, 'default') && info.default !== undefined) {
+          options[name] = info.default;
         }
       }
-      /* istanbul ignore next */
       const min = optMap[unnamed]?.min ?? NaN;
       if (unnamedList.length < min) {
         usage`At least ${min} ${
-          /* istanbul ignore next */
           optMap[unnamed]?.example ?? 'unnamed_parameters'
         } required.`;
       }
-      /* istanbul ignore next */
       const max = optMap[unnamed]?.max ?? NaN;
       if (unnamedList.length > max) {
         usage`Too many ${
-          /* istanbul ignore next */
           optMap[unnamed]?.example ?? 'unnamed_parameters'
         } specified(up to ${max}).`;
       }
@@ -531,12 +579,9 @@ export function parse<OptMap extends OptionInformationMap>(
       }),
     ) as Options<OptMap>;
   } catch (ex) {
-    /* istanbul ignore next */
     if (optMap[helpString]?.showUsageOnError && typeof ex === 'string') {
       // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-      /* istanbul ignore next */
       process.stderr.write(`${ex}\n\n${makeHelpString(optMap)}`);
-      /* istanbul ignore next */
       process.exit(1);
     }
     throw ex;
@@ -552,7 +597,7 @@ function loadPackageJson() {
   for (
     let dirname =
         ('mainModule' in process)
-          ? /* istanbul ignore next */
+          ? // istanbul ignore next
             path.dirname(
               (process as unknown as { mainModule: { filename: string } })[
                 'mainModule'
@@ -565,16 +610,12 @@ function loadPackageJson() {
   ) {
     try {
       // node_modulesまで親ディレクトリをさかのぼる
-      /* istanbul ignore next */
       if (path.basename(dirname) === 'node_modules') {
-        /* istanbul ignore next */
         dirname = path.dirname(dirname);
       } else {
         const stat = fs.statSync(path.join(dirname, 'node_modules'));
         // node_modulesがディレクトリでなければさかのぼりを継続
-        /* istanbul ignore next */
         if (!stat.isDirectory()) {
-          /* istanbul ignore next */
           continue;
         }
       }
@@ -582,18 +623,15 @@ function loadPackageJson() {
       return JSON.parse(
         fs.readFileSync(path.join(dirname, 'package.json'), 'utf8'),
       ) as { version: string; name: string };
-    } catch (ex) {
-      /* istanbul ignore next */
+    } catch (ex: unknown) {
       if (!hasProperty(ex, 'code') || ex.code !== 'ENOENT') {
         // ファイルが見つからない、以外のエラーはエラーとする
-        /* istanbul ignore next */
         throw ex;
       }
       // ファイルが見つからなかったらさかのぼりを継続
     }
   }
   // package.jsonが見つからなければエラー
-  /* istanbul ignore next */
   return error`package.json not found`;
 }
 
@@ -612,23 +650,21 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const { version, name: processName } = loadPackageJson();
   let help = `Version: ${processName} ${version}\nUsage:\n`;
   const requiredList: string[] = [];
-  const options: string[] = [];
+  const optionalList: string[] = [];
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
-    /* istanbul ignore next */
     const example = `${name.length > 1 ? '--' : '-'}${name}${
       info.type === 'boolean' ? '' : ' ' + (info.example || 'parameter')
     }`;
-    (info.nature === 'alone'
+    (hasProperty(info, 'alone') && info.alone
       ? aloneList
-      : info.nature === 'required'
+      : hasProperty(info, 'required') && info.required
       ? requiredList
-      : options
+      : optionalList
     ).push(example);
   }
-  /* istanbul ignore next */
-  if (requiredList.length + options.length > 0) {
-    const line = [...requiredList, ...options.map(o => `[${o}]`)];
+  if (requiredList.length + optionalList.length > 0) {
+    const line = [...requiredList, ...optionalList.map(o => `[${o}]`)];
     const info = optMap[unnamed];
     if (info) {
       line.push(`[--] [${info.example || 'parameter'}...]`);
@@ -638,7 +674,6 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   help += aloneList.map(option => `  npx ${processName} ${option}\n`).join('');
   {
     const info = optMap[helpString];
-    /* istanbul ignore next */
     if (info?.describe) {
       help += `\nDescription:\n${indent(info.describe, '  ')}`;
     }
@@ -660,9 +695,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     }\n${indent(info.describe, '    ')}`;
   }
   const info = optMap[unnamed];
-  /* istanbul ignore next */
   if (info) {
-    /* istanbul ignore next */
     help += `  [--] [${info.example || 'parameter'}...]\n${indent(
       info.describe,
       '    ',
@@ -697,7 +730,6 @@ function indent(text: string | undefined, indent: string): string {
       srcIndent = current.length;
     } else {
       for (let l = Math.min(srcIndent, current.length); l >= 0; --l) {
-        /* istanbul ignore next */
         if (lines[0].slice(0, l) === line.slice(0, l)) {
           srcIndent = l;
           break;

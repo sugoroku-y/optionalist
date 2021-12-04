@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as optionalist from '../src/index';
+import * as optionalist from '../src';
+import { assertNotToHaveProperty } from './asserts';
 
 const OPTMAP = {
   [optionalist.helpString]: {
@@ -12,26 +13,26 @@ const OPTMAP = {
   alpha: {},
   bravo: {
     type: 'number',
-    nature: ['default', 1],
+    default: 1,
     describe: 'b value',
     example: 'b-value',
     alias: 'b',
   },
   charlie: {
     type: 'boolean',
-    nature: 'alone',
+    alone: true,
     alias: ['charr', 'c'],
     describe: `
     `,
   },
   delta: {
-    nature: 'required',
+    required: true,
   },
   echo: {
-    nature: 'alone',
+    alone: true,
   },
   foxtrot: {
-    nature: ['default', 'racoondog'],
+    default: 'racoondog',
   },
   golf: {
     constraints: ['volkswagen', 'sports'],
@@ -97,12 +98,8 @@ test('optionalist unnamed', () => {
     'bbb',
     'ccc',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options[optionalist.unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
 });
 test('optionalist unnamed', () => {
@@ -114,12 +111,8 @@ test('optionalist unnamed', () => {
     '-bbb',
     '-ccc',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options[optionalist.unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
 });
 test('optionalist string constraints', () => {
@@ -129,12 +122,8 @@ test('optionalist string constraints', () => {
     '--golf',
     'volkswagen',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.golf).toBe('volkswagen');
 });
 test('optionalist string constraints', () => {
@@ -144,12 +133,8 @@ test('optionalist string constraints', () => {
     '--golf',
     'sports',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.golf).toBe('sports');
 });
 test('optionalist string constraints', () => {
@@ -159,12 +144,8 @@ test('optionalist string constraints', () => {
     '--GOLF',
     'VOLKSWAGEN',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.GOLF).toBe('volkswagen');
 });
 test('optionalist string constraints', () => {
@@ -174,12 +155,8 @@ test('optionalist string constraints', () => {
     '--GOLF',
     'SPORTS',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.GOLF).toBe('sports');
 });
 test('optionalist number constraints', () => {
@@ -189,12 +166,8 @@ test('optionalist number constraints', () => {
     '--hotel',
     '1234',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.hotel).toBe(1234);
 });
 test('optionalist number constraints', () => {
@@ -204,12 +177,8 @@ test('optionalist number constraints', () => {
     '--hotel',
     '5678',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.hotel).toBe(5678);
 });
 test('optionalist number constraints', () => {
@@ -219,12 +188,8 @@ test('optionalist number constraints', () => {
     '--hotel',
     '9012',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.hotel).toBe(9012);
 });
 test('optionalist number range constraints', () => {
@@ -234,12 +199,8 @@ test('optionalist number range constraints', () => {
     '--india',
     '1000',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.india).toBe(1000);
 });
 test('optionalist number range constraints', () => {
@@ -249,12 +210,8 @@ test('optionalist number range constraints', () => {
     '--india',
     '9999',
   ]);
-  if ('charlie' in options) {
-    throw new Error('must be unreachable');
-  }
-  if ('echo' in options) {
-    throw new Error('must be unreachable');
-  }
+  assertNotToHaveProperty(options, 'charlie');
+  assertNotToHaveProperty(options, 'echo');
   expect(options.india).toBe(9999);
 });
 test('optionalist usage error', () => {
@@ -342,64 +299,35 @@ test('optionalist usage error', () => {
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
-    optionalist.parse({ a: { nature: ['default', 1] } } as any, ['-a', '2']),
+    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+    optionalist.parse({ a: { default: 1 } }, ['-a', '2']),
   ).toThrow('The default value of the -a parameter must be a string.: 1');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
-    optionalist.parse({ a: { nature: ['default'] } } as any, ['-a', '2']),
-  ).toThrow(
-    'The default value of the -a parameter must be a string.: undefined',
-  );
-});
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    optionalist.parse(
-      { a: { type: 'boolean', nature: ['default', 1] } } as any,
-      ['-a', '2'],
-    ),
+    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+    optionalist.parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
   ).toThrow('The default value of the -a parameter cannot be specified.: 1');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
-    optionalist.parse({ a: { type: 'boolean', nature: ['default'] } } as any, [
-      '-a',
-      '2',
-    ]),
-  ).toThrow(
-    'The default value of the -a parameter cannot be specified.: undefined',
-  );
-});
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    optionalist.parse({ a: { type: 'boolean', nature: 'required' } } as any, [
-      '-a',
-      '2',
-    ]),
+    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+    optionalist.parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
   ).toThrow('The -a cannot set to be required.');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     optionalist.parse(
-      { a: { type: 'number', nature: ['default', '1'] } } as any,
+      // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+      { a: { type: 'number', default: '1' } },
       ['-a', '2'],
     ),
   ).toThrow('The default value of the -a parameter must be a number.: 1');
 });
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    optionalist.parse({ a: { type: 'number', nature: ['default'] } } as any, [
-      '-a',
-      '2',
-    ]),
-  ).toThrow(
-    'The default value of the -a parameter must be a number.: undefined',
-  );
-});
 test('optionalist helpstring', () => {
   const { name: packageName, version } = JSON.parse(
     fs.readFileSync(path.join(path.dirname(__dirname), 'package.json'), 'utf8'),
-  );
+  ) as { name: string; version: string };
   expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
@@ -427,9 +355,19 @@ Options:
     arguments for command
 `);
 });
-
 test('process.argv', () => {
-  let save;
-  [save, process.argv] = [process.argv, ['a', 'b', 'c']];
-  expect(optionalist.parse({})[optionalist.unnamed]).toEqual(['c']);
+  let saved;
+  [saved, process.argv] = [process.argv, ['abc', 'def', 'ghi']];
+  try {
+    const x = optionalist.parse({ a: {}, b: {}, c: {} });
+    expect(x[optionalist.unnamed]).toEqual(['ghi']);
+  } finally {
+    process.argv = saved;
+  }
+});
+test('never', () => {
+  expect(() =>
+    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+    optionalist.parse({ a: { type: 'unknown', default: 1 } }, []),
+  ).toThrow('unknown type: unknown for the -a parameter');
 });
