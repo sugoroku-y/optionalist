@@ -1,5 +1,5 @@
-/src/
+/*
+!/lib/
 /lib/index.js.map
-/coverage/
-/.vscode/
-/sample/
+!README.md
+!LICENSE
