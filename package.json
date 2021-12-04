@@ -1,6 +1,6 @@
 {
   "name": "optionalist",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "The commandline parser for TypeScript",
   "main": "lib/index.js",
   "scripts": {
