@@ -7,7 +7,6 @@ optionalistはTypeScript向けに作られたコマンドラインパーザー�
 [![NPM version](https://img.shields.io/npm/v/optionalist.svg?style=flat)](https://www.npmjs.com/package/optionalist)
 [![NPM monthly download](https://img.shields.io/npm/dm/optionalist.svg?style=flat)](https://www.npmjs.com/package/optionalist)
 [![NPM total download](https://img.shields.io/npm/dt/optionalist.svg?style=flat)](https://www.npmjs.com/package/optionalist)
-[![Build Status](https://travis-ci.org/sugoroku-y/optionalist.svg?branch=master)](https://travis-ci.org/sugoroku-y/optionalist)
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 ## 使い方
