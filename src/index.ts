@@ -301,8 +301,8 @@ type Options<OPTMAP extends OptionInformationMap> = Normalize<
  * @param {string} [message]
  * @returns {never}
  */
-function checkNever(obj: never, message?: string): never {
-  throw new Error(message ?? 'Illegal value: ${obj}');
+function checkNever(obj: never, message: string): never {
+  throw new Error(message);
 }
 
 /**
@@ -315,17 +315,6 @@ function toIterable<T>(itr: Iterator<T>): Iterable<T> {
       return itr;
     },
   };
-}
-
-/**
- *
- * @param strings argsで指定された引数のうちいずれかがundefinedかnullならば空文字列を返す
- * @param args
- */
-function optional(strings: TemplateStringsArray, ...args: unknown[]): string {
-  return args.every(arg => arg !== undefined && arg !== null)
-    ? strings.reduce((r, e, i) => r + String(args[i - 1]) + e)
-    : '';
 }
 
 /**
@@ -350,6 +339,19 @@ function isNumberArray(
   o: readonly number[] | { min?: number; max?: number },
 ): o is readonly number[] {
   return Array.isArray(o);
+}
+
+/**
+ * オプション情報から例示用文字列を取得。
+ *
+ * 指定がなければdefで指定された文字列を使う。
+ *
+ * @param {{ example?: string }} info
+ * @param {string} [def='parameter']
+ * @returns {string}
+ */
+function example(info: { example?: string }, def = 'parameter'): string {
+  return info.example ?? def;
 }
 /**
  * コマンドラインをoptMapにしたがって解析する。
@@ -382,6 +384,22 @@ export function parse<OptMap extends OptionInformationMap>(
     for (const [name, info] of Object.entries(optMap)) {
       // 1文字だけのときは`-`も一つ
       const optArg = `${name.length > 1 ? '--' : '-'}${name}`;
+      // 型指定のチェック
+      switch (info.type) {
+        case undefined:
+        case 'string':
+        case 'number':
+        case 'boolean':
+          break;
+        // TypeScriptのエラーになるので他のタイプは指定できないはずだが念のため
+        default:
+          checkNever(
+            info,
+            `unknown type: ${
+              (info as OptionInformation).type
+            } for the ${optArg} parameter`,
+          );
+      }
       // エイリアスを展開
       optMapAlias[optArg] = { name, info };
       if (info.alias) {
@@ -419,14 +437,6 @@ export function parse<OptMap extends OptionInformationMap>(
           // @ts-expect-error boolean型ではdefault値は指定できないが、念のため
           case 'boolean':
             return error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
-          // 他のタイプは指定できないはずだが念のため
-          default:
-            return checkNever(
-              info,
-              `unknown type: ${
-                (info as OptionInformation).type
-              } for the ${optArg} parameter`,
-            );
         }
       }
     }
@@ -444,7 +454,7 @@ export function parse<OptMap extends OptionInformationMap>(
       if (arg === '--') {
         if (aloneOpt) {
           // 単独で指定されるはずなのに他のオプションが指定された
-          usage`${aloneOpt || arg} must be specified alone.`;
+          usage`${aloneOpt} must be specified alone.`;
         }
         // --以降はすべて無名オプション
         unnamedList.push(...toIterable(itr));
@@ -474,13 +484,15 @@ export function parse<OptMap extends OptionInformationMap>(
         case 'number': {
           const r = itr.next();
           if (r.done) {
-            return usage`${arg} needs a number parameter${optional` as the ${info.example}`}`;
+            return usage`${arg} needs a number parameter as the ${example(
+              info,
+            )}`;
           }
           const value = +r.value;
           if (!isFinite(value)) {
-            return usage`${arg} needs a number parameter${optional` as the ${info.example}`}: ${
-              r.value
-            }`;
+            return usage`${arg} needs a number parameter as the ${example(
+              info,
+            )}: ${r.value}`;
           }
           if (info.constraints) {
             if (isNumberArray(info.constraints)) {
@@ -505,7 +517,7 @@ export function parse<OptMap extends OptionInformationMap>(
         case 'string': {
           const r = itr.next();
           if (r.done) {
-            return usage`${arg} needs a parameter${optional` as the ${info.example}`}`;
+            return usage`${arg} needs a parameter as the ${example(info)}`;
           }
           if (info.constraints) {
             const [constraints, findValue] = info.ignoreCase
@@ -527,13 +539,6 @@ export function parse<OptMap extends OptionInformationMap>(
           options[name] = r.value;
           continue;
         }
-        default:
-          checkNever(
-            info,
-            `unknown type: ${
-              (info as OptionInformation).type
-            } for the ${arg} parameter`,
-          );
       }
     }
     // 単独オプションが指定されていなかったらデフォルト値の設定を行う
@@ -555,15 +560,21 @@ export function parse<OptMap extends OptionInformationMap>(
       }
       const min = optMap[unnamed]?.min ?? NaN;
       if (unnamedList.length < min) {
-        usage`At least ${min} ${
-          optMap[unnamed]?.example ?? 'unnamed_parameters'
-        } required.`;
+        usage`At least ${min} ${example(
+          // optMap[unnamed]?.minが存在しているのでoptMap[unnamed]も存在している
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          optMap[unnamed]!,
+          'unnamed_parameters',
+        )} required.`;
       }
       const max = optMap[unnamed]?.max ?? NaN;
       if (unnamedList.length > max) {
-        usage`Too many ${
-          optMap[unnamed]?.example ?? 'unnamed_parameters'
-        } specified(up to ${max}).`;
+        usage`Too many ${example(
+          // optMap[unnamed]?.maxが存在しているのでoptMap[unnamed]も存在している
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          optMap[unnamed]!,
+          'unnamed_parameters',
+        )} specified(up to ${max}).`;
       }
       // 無名オプションを追加
       Object.defineProperty(options, unnamed, {
@@ -597,7 +608,7 @@ function loadPackageJson() {
   for (
     let dirname =
         ('mainModule' in process)
-          ? // istanbul ignore next
+          ? // istanbul ignore next メインモジュールが見つからなければ現在実行中のスクリプトのある場所から開始
             path.dirname(
               (process as unknown as { mainModule: { filename: string } })[
                 'mainModule'
@@ -609,29 +620,20 @@ function loadPackageJson() {
     prev = dirname, dirname = path.dirname(prev)
   ) {
     try {
-      // node_modulesまで親ディレクトリをさかのぼる
-      if (path.basename(dirname) === 'node_modules') {
-        dirname = path.dirname(dirname);
-      } else {
-        const stat = fs.statSync(path.join(dirname, 'node_modules'));
-        // node_modulesがディレクトリでなければさかのぼりを継続
-        if (!stat.isDirectory()) {
-          continue;
-        }
-      }
-      // node_modulesを見つけたらそこのpackage.jsonを読み込んで解析
+      // package.jsonを読み込んで解析
       return JSON.parse(
         fs.readFileSync(path.join(dirname, 'package.json'), 'utf8'),
       ) as { version: string; name: string };
     } catch (ex: unknown) {
+      // istanbul ignore next ファイルが見つからない、以外のエラーはエラーとする
       if (!hasProperty(ex, 'code') || ex.code !== 'ENOENT') {
-        // ファイルが見つからない、以外のエラーはエラーとする
+        // istanbul ignore next
         throw ex;
       }
       // ファイルが見つからなかったらさかのぼりを継続
     }
   }
-  // package.jsonが見つからなければエラー
+  // istanbul ignore next package.jsonが見つからなければエラー
   return error`package.json not found`;
 }
 
@@ -653,21 +655,22 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const optionalList: string[] = [];
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
-    const example = `${name.length > 1 ? '--' : '-'}${name}${
-      info.type === 'boolean' ? '' : ' ' + (info.example || 'parameter')
-    }`;
     (hasProperty(info, 'alone') && info.alone
       ? aloneList
       : hasProperty(info, 'required') && info.required
       ? requiredList
       : optionalList
-    ).push(example);
+    ).push(
+      `${name.length > 1 ? '--' : '-'}${name}${
+        info.type === 'boolean' ? '' : ' ' + example(info)
+      }`,
+    );
   }
   if (requiredList.length + optionalList.length > 0) {
     const line = [...requiredList, ...optionalList.map(o => `[${o}]`)];
     const info = optMap[unnamed];
     if (info) {
-      line.push(`[--] [${info.example || 'parameter'}...]`);
+      line.push(`[--] [${example(info, 'unnamed_parameters')}...]`);
     }
     aloneList.unshift(line.join(' '));
   }
@@ -691,12 +694,12 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     help += `  ${optNames
       .map(n => `${n.length > 1 ? '--' : '-'}${n}`)
       .join(', ')}${
-      info.type === 'boolean' ? '' : ' ' + (info.example || 'parameter')
+      info.type === 'boolean' ? '' : ' ' + example(info)
     }\n${indent(info.describe, '    ')}`;
   }
   const info = optMap[unnamed];
   if (info) {
-    help += `  [--] [${info.example || 'parameter'}...]\n${indent(
+    help += `  [--] [${example(info, 'unnamed_parameters')}...]\n${indent(
       info.describe,
       '    ',
     )}`;

@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as optionalist from '../src';
 import { assertNotToHaveProperty } from './asserts';
+import './toExitProcess';
 
 const OPTMAP = {
   [optionalist.helpString]: {
@@ -286,6 +287,12 @@ test('optionalist usage error', () => {
   expect(() =>
     optionalist.parse({ [optionalist.unnamed]: { min: 2, max: 3 } }, ['111']),
   ).toThrow('At least 2 unnamed_parameters required.');
+  expect(() =>
+    optionalist.parse(
+      { [optionalist.unnamed]: { min: 2, max: 3, example: 'ppp' } },
+      ['111'],
+    ),
+  ).toThrow('At least 2 ppp required.');
 });
 test('optionalist usage error', () => {
   expect(() =>
@@ -296,6 +303,12 @@ test('optionalist usage error', () => {
       '444',
     ]),
   ).toThrow('Too many unnamed_parameters specified(up to 3).');
+  expect(() =>
+    optionalist.parse(
+      { [optionalist.unnamed]: { min: 2, max: 3, example: 'ppp' } },
+      ['111', '222', '333', '444'],
+    ),
+  ).toThrow('Too many ppp specified(up to 3).');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
@@ -370,4 +383,134 @@ test('never', () => {
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
     optionalist.parse({ a: { type: 'unknown', default: 1 } }, []),
   ).toThrow('unknown type: unknown for the -a parameter');
+});
+
+/**
+ * procを実行中に、streamへ出力された内容を文字列として返す。
+ *
+ * procが非同期の場合は、非同期で返す。
+ *
+ * @param {NodeJS.WriteStream} stream
+ * @param {() => Promise<unknown>} proc
+ * @returns {Promise<string>}
+ */
+function stream(
+  stream: NodeJS.WriteStream,
+  proc: () => Promise<unknown>,
+): Promise<string>;
+/**
+ * procを実行中に、streamへ出力された内容を文字列として返す。
+ *
+ * procが非同期の場合は、非同期で返す。
+ *
+ * @param {NodeJS.WriteStream} stream
+ * @param {() => Promise<unknown>} proc
+ * @returns {Promise<string>}
+ */
+function stream(stream: NodeJS.WriteStream, proc: () => unknown): string;
+// 実装
+function stream(
+  stream: NodeJS.WriteStream,
+  proc: () => unknown,
+): string | Promise<string> {
+  // 出力バッファ
+  let buffer = Buffer.alloc(0);
+  // モック
+  const mock = jest.spyOn(stream, 'write').mockImplementation(str => {
+    // 書き込みをバッファに溜めていく
+    buffer = Buffer.concat([buffer, Buffer.from(str)]);
+    return true;
+  });
+  // モックを元に戻すかどうか
+  let restorable = true;
+  try {
+    const result = proc();
+    if (result instanceof Promise) {
+      // 非同期実行するためにこの関数内ではモックを元に戻さない
+      restorable = false;
+      return (async () => {
+        try {
+          await result;
+          // バッファの内容を返す
+          return buffer.toString('utf8');
+        } finally {
+          // こちらでは問答無用で元に戻す
+          mock.mockRestore();
+        }
+      })();
+    }
+    // バッファの内容を返す
+    return buffer.toString('utf8');
+  } finally {
+    // 非同期実行を開始する場合は元に戻さない
+    if (restorable) {
+      mock.mockRestore();
+    }
+  }
+}
+
+test('showUsageOnError', () => {
+  expect(
+    stream(process.stderr, () => {
+      expect(() => {
+        optionalist.parse(
+          {
+            [optionalist.helpString]: {
+              showUsageOnError: true,
+            },
+            aaa: {
+              describe: 'test',
+              required: true,
+            },
+            [optionalist.unnamed]: {
+              min: 0,
+              max: Infinity,
+            },
+          },
+          [],
+        );
+      }).toExitProcess(1);
+    }),
+  ).toMatchInlineSnapshot(`
+"--aaa required
+
+Version: optionalist 2.0.0
+Usage:
+  npx optionalist --aaa parameter [--] [unnamed_parameters...]
+
+Options:
+  --aaa parameter
+    test
+  [--] [unnamed_parameters...]
+"
+`);
+});
+test('helpString', () => {
+  expect(optionalist.parse({ a: {} }, [])[optionalist.helpString])
+    .toMatchInlineSnapshot(`
+"Version: optionalist 2.0.0
+Usage:
+  npx optionalist [-a parameter]
+
+Options:
+  -a parameter
+"
+`);
+});
+
+test('min only', () => {
+  expect(
+    optionalist.parse({ a: { type: 'number', constraints: { min: 10 } } }, [
+      '-a',
+      '10',
+    ]),
+  ).toEqual({ a: 10 });
+});
+test('max only', () => {
+  expect(
+    optionalist.parse({ a: { type: 'number', constraints: { max: 10 } } }, [
+      '-a',
+      '10',
+    ]),
+  ).toEqual({ a: 10 });
 });
