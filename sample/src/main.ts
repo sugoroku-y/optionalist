@@ -19,22 +19,22 @@ const options = optionalist.parse({
   help: {
     type: 'boolean',
     alias: ['?', 'h'],
-    nature: 'alone',
+    alone: true,
     describe: 'Show this help.',
   },
   init: {
     type: 'boolean',
-    nature: 'alone',
+    alone: true,
     describe: 'Initialize your project.'
   },
   output: {
     type: 'string',
-    nature: 'required',
+    required: true,
     describe: 'Specify the filename to output.',
     example: 'output_filename',
   },
   config: {
-    nature: ['default', path.resolve('config.json')],
+    default: path.resolve('config.json'),
     describe: 'Specify the configuration file for your project.',
     example: 'config_filename',
   },
@@ -62,7 +62,7 @@ type typeof_options$1 = {
   readonly [optionalist.helpString]: string;
 };
 
-// `nature: 'alone'`なオプションが指定されたかどうかの判定には`in`を使う
+// `alone: true`なオプションが指定されたかどうかの判定には`in`を使う
 // --helpが指定されたとき
 if ('help' in options) {
   // [optionalist.helpString]はコマンドの説明用文字列を返す。
@@ -121,7 +121,7 @@ type typeof_options$3 = {
   readonly [optionalist.helpString]: string;
 };
 
-// つまり`nature: 'alone'`が指定されたオプションの処理をすべて終わらせないと
+// つまり`alone: true`が指定されたオプションの処理をすべて終わらせないと
 // 通常のオプションの処理を始められない。
 // プロパティはそれぞれ指定された型になっている。
 

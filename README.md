@@ -25,22 +25,22 @@ const options = optionalist.parse({
   help: {
     type: 'boolean',
     alias: ['?', 'h'],
-    nature: 'alone',
+    alone: true,
     describe: 'Show this help.',
   },
   init: {
     type: 'boolean',
-    nature: 'alone',
+    alone: true,
     describe: 'Initialize your project.'
   },
   output: {
     type: 'string',
-    nature: 'required',
+    required: true,
     describe: 'Specify the filename to output.',
     example: 'output_filename',
   },
   config: {
-    nature: ['default', path.resolve('config.json')],
+    default: path.resolve('config.json'),
     describe: 'Specify the configuration file for your project.',
     example: 'config_filename',
   },
@@ -77,7 +77,7 @@ type typeof_options$1 = {
 受け取った結果は自動的に型付けされ、デフォルト値が設定された状態になっています。
 
 ```ts
-// `nature: 'alone'`なオプションが指定されたかどうかの判定には`in`を使う
+// `alone: true`なオプションが指定されたかどうかの判定には`in`を使う
 // --helpが指定されたとき
 if ('help' in options) {
   // [optionalist.helpString]はコマンドの説明用文字列を返す。
@@ -138,7 +138,7 @@ type typeof_options$3 = {
   readonly [optionalist.helpString]: string;
 };
 
-// つまり`nature: 'alone'`が指定されたオプションの処理をすべて終わらせないと
+// つまり`alone: true'`が指定されたオプションの処理をすべて終わらせないと
 // 通常のオプションの処理を始められない。
 // プロパティはそれぞれ指定された型になっている。
 
@@ -184,18 +184,18 @@ if (options.watch) {
     たとえば`{alpha: {example: 'filename'}}`と指定した場合  
     ヘルプ用文字列では`--alpha filename`のように使用されます。  
     `type: 'boolean'`の場合には指定できません。
-  - `nature`: オプションの性質を指定します。  
-    `'alone`、`'required'`、`['default'、デフォルト値]`のいずれかを指定します。  
-    - `'alone'`: 単独で指定するオプションのときに指定します。  
-      ほかのオプションは名前付き、無名にかかわらず指定できなくなります。
-    - `'required'`: 指定が必須なオプションのときに指定します。  
-      このオプションが指定されていないとエラーになります。  
-      `type: 'boolean'`の場合には指定できません。
-    - `['default', デフォルト値]`: このオプションが省略されたときに  
-      デフォルト値が指定されるようになります。  
-      デフォルト値には`type: 'string'`の場合には文字列を  
-      `type: 'number'`の場合には数値を指定しなければなりません。  
-      `type: 'boolean'`の場合には指定できません。
+  - `alone`: 単独で指定するオプションのときに指定します。  
+    値に指定できるのは`true`だけです。
+    ほかのオプションは名前付き、無名にかかわらず指定できなくなります。
+  - `required`: 指定が必須なオプションのときに指定します。  
+    値に指定できるのは`true`だけです。
+    このオプションが指定されていないとエラーになります。  
+    `type: 'boolean'`の場合には指定できません。
+  - `default`: このオプションが省略されたときに  
+    デフォルト値が指定されるようになります。  
+    デフォルト値には`type: 'string'`の場合には文字列を  
+    `type: 'number'`の場合には数値を指定しなければなりません。  
+    `type: 'boolean'`の場合には指定できません。
   - `alias`: オプションの別名を指定します。  
     実際にコマンドラインで使用する場合には、  
    `name`と同様に一文字だけの場合は`-x`、  
