@@ -25,7 +25,7 @@ const options = optionalist.parse({
   init: {
     type: 'boolean',
     alone: true,
-    describe: 'Initialize your project.'
+    describe: 'Initialize your project.',
   },
   output: {
     type: 'string',
@@ -41,6 +41,9 @@ const options = optionalist.parse({
   watch: {
     type: 'boolean',
     describe: 'Specify when you want to set the watch mode.',
+  },
+  timeout: {
+    type: 'number',
   },
   [optionalist.unnamed]: {
     example: 'script_filename',

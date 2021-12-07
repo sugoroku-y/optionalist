@@ -87,7 +87,7 @@ describe('sample package test', () => {
     ...args: [TemplateStringsArray, ...unknown[]] | [string] | []
   ) => `${args[0] ? `${templateLiteral(...args)}\n\n` : ''}Version: sample 0.0.1
 Usage:
-  npx sample --output output_filename [--config config_filename] [--watch] [--] [script_filename...]
+  npx sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
   npx sample --help
   npx sample --init
 
@@ -105,6 +105,7 @@ Options:
     Specify the configuration file for your project.
   --watch
     Specify when you want to set the watch mode.
+  --timeout parameter
   [--] [script_filename...]
     Specify the script filename(s) to execute.
 `;
@@ -183,6 +184,34 @@ Options:
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--config needs a parameter as the config_filename`,
+    );
+  });
+
+  test('specify output,timeout', async () => {
+    await prompt.exec`node ./ --output output.txt --timeout 5000`;
+    expect(prompt.stdout).toBe('');
+    expect(prompt.stderr).toBe('');
+  });
+
+  test('specify output,timeout without timeout', async () => {
+    expect(
+      await unpromise(prompt.exec`node ./ --output output.txt --timeout`),
+    ).toThrow('FAILED(exit code: 1)');
+    expect(prompt.stdout).toBe('');
+    expect(prompt.stderr).toBe(
+      helpString`--timeout needs a number parameter as the parameter`,
+    );
+  });
+
+  test('specify output,timeout with NaN', async () => {
+    expect(
+      await unpromise(
+        prompt.exec`node ./ --output output.txt --timeout NotANumber`,
+      ),
+    ).toThrow('FAILED(exit code: 1)');
+    expect(prompt.stdout).toBe('');
+    expect(prompt.stderr).toBe(
+      helpString`--timeout needs a number parameter as the parameter: NotANumber`,
     );
   });
 
