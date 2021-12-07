@@ -471,8 +471,7 @@ test('showUsageOnError', () => {
         );
       }).toExitProcess(1);
     }),
-  ).toMatchInlineSnapshot(`
-"--aaa required
+  ).toBe(`--aaa required
 
 Version: optionalist 2.0.2
 Usage:
@@ -482,19 +481,16 @@ Options:
   --aaa parameter
     test
   [--] [unnamed_parameters...]
-"
 `);
 });
 test('helpString', () => {
   expect(optionalist.parse({ a: {} }, [])[optionalist.helpString])
-    .toMatchInlineSnapshot(`
-"Version: optionalist 2.0.2
+    .toBe(`Version: optionalist 2.0.2
 Usage:
   npx optionalist [-a parameter]
 
 Options:
   -a parameter
-"
 `);
 });
 
