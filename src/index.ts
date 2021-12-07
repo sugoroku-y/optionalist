@@ -715,39 +715,41 @@ function makeHelpString<OptMap extends OptionInformationMap>(
  * @returns {string}
  */
 function indent(text: string | undefined, indent: string): string {
-  // 先頭、末尾の空白行を除去
-  text = text?.replace(/^(?:[ \t]*[\r\n]+)+|(?:[\r\n]+[ \t]*)+$/g, '');
   // undefinedもしくは空白以外の文字が見つからなかったら空文字列を返す
-  if (!text?.match(/[^ \t]/)) {
+  if (!text || !/\S/.test(text)) {
     return '';
   }
-  // 、行末の空白を除去しつつ一行ごとに分割
-  const lines = text.replace(/^[ \t]+$/, '').split(/[ \t]*\r?\n/);
+  // 先頭、末尾の空白行を除去、行末の空白を除去しつつ一行ごとに分割
+  const [first, ...rest] = text
+    .replace(/^(?:[ \t]*[\r\n]+)+|(?:[\r\n]+[ \t]*)+$/g, '')
+    .replace(/^[ \t]+$/, '')
+    .split(/[ \t]*\r?\n/);
   // 行頭の空白で共通のものを抽出
-  let srcIndent: number | undefined;
-  for (const line of lines) {
-    const [current] = line.match(/^[ \t]+/) || [];
-    if (!current) {
-      srcIndent = 0;
-    } else if (srcIndent === undefined) {
-      srcIndent = current.length;
-    } else {
-      for (let l = Math.min(srcIndent, current.length); l >= 0; --l) {
-        if (lines[0].slice(0, l) === line.slice(0, l)) {
-          srcIndent = l;
-          break;
-        }
-      }
-    }
-    if (!srcIndent) {
-      break;
-    }
-  }
+  let srcIndent = 0;
+  for (
+    let ch: string;
+    // 最初の行がまだ続いていて
+    srcIndent < first.length &&
+    // 空白文字が続いていて
+    ((ch = first.charAt(srcIndent)) === ' ' || ch === '\t') &&
+    // 他の行にも同じ位置に同じ文字があれば
+    rest.every(
+      line => srcIndent < line.length && line.charAt(srcIndent) === ch,
+    );
+    // 継続
+    ++srcIndent
+  );
+  // 終わればそこまでを共通の空白文字とする。
+  // 共通の空白文字がなければsrcIndentは0
+
   // 各行頭に共通の空白文字があれば、共通部分だけを指定されたインデントと置き換え
-  // なければ、行頭の空白文字をすべて除去して指定されたインデントを入れる
-  const re =
-    srcIndent && srcIndent > 0
-      ? new RegExp(`^${lines[0].slice(0, srcIndent)}`)
-      : /^[ \t]*/;
-  return lines.map(line => line.replace(re, indent) + '\n').join('');
+  // なければ、行頭の空白文字すべてを指定されたインデントと置き換える
+  return [first, ...rest]
+    .map(
+      srcIndent
+        ? line => line.slice(srcIndent)
+        : line => line.replace(/^[ \t]*/, ''),
+    )
+    .map(line => `${indent}${line}\n`)
+    .join('');
 }
