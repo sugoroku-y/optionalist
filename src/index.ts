@@ -410,14 +410,10 @@ export function parse<OptMap extends OptionInformationMap>(
           optMapAlias[optAlias] = { name, info };
         }
       }
-      if (
-        info.type === 'boolean' &&
-        hasProperty(info, 'required') &&
-        info.required
-      ) {
+      if (info.type === 'boolean' && info.required) {
         error`The ${optArg} cannot set to be required.`;
       }
-      if (hasProperty(info, 'default')) {
+      if (info.default !== undefined) {
         const defaultValue = info.default;
         switch (info.type) {
           case 'number':
@@ -469,12 +465,12 @@ export function parse<OptMap extends OptionInformationMap>(
         continue;
       }
       const { name, info } = optMapAlias[arg];
-      if (aloneOpt || (prevOpt && hasProperty(info, 'alone') && info.alone)) {
+      if (aloneOpt || (prevOpt && info.alone)) {
         // 単独で指定されるはずなのに他のオプションが指定された
         usage`${aloneOpt || arg} must be specified alone.`;
       }
       prevOpt = arg;
-      if (hasProperty(info, 'alone') && info.alone) {
+      if (info.alone) {
         aloneOpt = arg;
       }
       switch (info.type) {
@@ -550,11 +546,11 @@ export function parse<OptMap extends OptionInformationMap>(
           continue;
         }
         // requiredなのに指定されていなかったらエラー
-        if (hasProperty(info, 'required') && info.required) {
+        if (info.required) {
           usage`${optArg} required`;
         }
         // デフォルト値が指定されていたら設定
-        if (hasProperty(info, 'default') && info.default !== undefined) {
+        if (info.default !== undefined) {
           options[name] = info.default;
         }
       }
@@ -655,12 +651,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const optionalList: string[] = [];
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
-    (hasProperty(info, 'alone') && info.alone
-      ? aloneList
-      : hasProperty(info, 'required') && info.required
-      ? requiredList
-      : optionalList
-    ).push(
+    (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${name.length > 1 ? '--' : '-'}${name}${
         info.type === 'boolean' ? '' : ' ' + example(info)
       }`,
