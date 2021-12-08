@@ -651,7 +651,10 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   optMap: OptMap,
 ): string {
   const { version, name: processName } = loadPackageJson();
-  let help = `Version: ${processName} ${version}\nUsage:\n`;
+  const help: string[] = [];
+  if (processName && version) {
+    help.push(`Version: ${processName} ${version}`, 'Usage:');
+  }
   const requiredList: string[] = [];
   const optionalList: string[] = [];
   const aloneList: string[] = [];
@@ -670,14 +673,18 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     }
     aloneList.unshift(line.join(' '));
   }
-  help += aloneList.map(option => `  npx ${processName} ${option}\n`).join('');
+  help.push(
+    ...aloneList.map(
+      option => `  npx ${processName ?? process.argv[1]} ${option}`,
+    ),
+  );
   {
-    const info = optMap[helpString];
-    if (info?.describe) {
-      help += `\nDescription:\n${indent(info.describe, '  ')}`;
+    const describe = indent(optMap[helpString]?.describe, '  ');
+    if (describe.length) {
+      help.push('', 'Description:', ...describe);
     }
   }
-  help += '\nOptions:\n';
+  help.push('', 'Options:');
   for (const [name, info] of Object.entries(optMap)) {
     const optNames = [name];
     if (info.alias) {
@@ -687,20 +694,21 @@ function makeHelpString<OptMap extends OptionInformationMap>(
         optNames.push(...info.alias);
       }
     }
-    help += `  ${optNames
-      .map(n => `${n.length > 1 ? '--' : '-'}${n}`)
-      .join(', ')}${
-      info.type === 'boolean' ? '' : ' ' + example(info)
-    }\n${indent(info.describe, '    ')}`;
+    help.push(
+      `  ${optNames.map(n => `${n.length > 1 ? '--' : '-'}${n}`).join(', ')}${
+        info.type === 'boolean' ? '' : ' ' + example(info)
+      }`,
+      ...indent(info.describe, '    '),
+    );
   }
   const info = optMap[unnamed];
   if (info) {
-    help += `  [--] [${example(info, 'unnamed_parameters')}...]\n${indent(
-      info.describe,
-      '    ',
-    )}`;
+    help.push(
+      `  [--] [${example(info, 'unnamed_parameters')}...]`,
+      ...indent(info.describe, '    '),
+    );
   }
-  return help;
+  return help.join('\n') + '\n';
 }
 
 /**
@@ -710,10 +718,10 @@ function makeHelpString<OptMap extends OptionInformationMap>(
  * @param {string} indent
  * @returns {string}
  */
-function indent(text: string | undefined, indent: string): string {
+function indent(text: string | undefined, indent: string): string[] {
   // undefinedもしくは空白以外の文字が見つからなかったら空文字列を返す
   if (!text || !/\S/.test(text)) {
-    return '';
+    return [];
   }
   // 先頭、末尾の空白行を除去、行末の空白を除去しつつ一行ごとに分割
   const [first, ...rest] = text
@@ -740,12 +748,8 @@ function indent(text: string | undefined, indent: string): string {
 
   // 各行頭に共通の空白文字があれば、共通部分だけを指定されたインデントと置き換え
   // なければ、行頭の空白文字すべてを指定されたインデントと置き換える
-  return [first, ...rest]
-    .map(
-      srcIndent
-        ? line => line.slice(srcIndent)
-        : line => line.replace(/^[ \t]*/, ''),
-    )
-    .map(line => `${indent}${line}\n`)
-    .join('');
+  const trim: (line: string) => string = srcIndent
+    ? line => line.slice(srcIndent)
+    : line => line.replace(/^[ \t]*/, '');
+  return [first, ...rest].map(line => `${indent}${trim(line)}`);
 }
