@@ -318,12 +318,22 @@ function toIterable<T>(itr: Iterator<T>): Iterable<T> {
 }
 
 /**
+ * 使い方を表示して終わるときに投げられる例外
+ */
+class Usage extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'USAGE';
+  }
+}
+
+/**
  * 指定によっては使い方を表示して終了する例外を投げる。ユーザーの指定間違い。
  * @param strings
  * @param args
  */
-function usage(strings: TemplateStringsArray, ...args: unknown[]): never {
-  throw strings.reduce((r, e, i) => r + String(args[i - 1]) + e);
+function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
+  throw new Usage(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
 }
 
 /**
@@ -331,8 +341,8 @@ function usage(strings: TemplateStringsArray, ...args: unknown[]): never {
  * @param strings
  * @param args
  */
-function error(strings: TemplateStringsArray, ...args: unknown[]): never {
-  throw new Error(strings.reduce((r, e, i) => r + String(args[i - 1]) + e));
+function error(...args: [TemplateStringsArray, ...unknown[]]): never {
+  throw new TypeError(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
 }
 
 function isNumberArray(
@@ -411,7 +421,7 @@ export function parse<OptMap extends OptionInformationMap>(
         }
       }
       if (info.type === 'boolean' && info.required) {
-        error`The ${optArg} cannot set to be required.`;
+        return error`The ${optArg} cannot set to be required.`;
       }
       if (info.default !== undefined) {
         const defaultValue = info.default;
@@ -450,7 +460,7 @@ export function parse<OptMap extends OptionInformationMap>(
       if (arg === '--') {
         if (aloneOpt) {
           // 単独で指定されるはずなのに他のオプションが指定された
-          usage`${aloneOpt} must be specified alone.`;
+          return usage`${aloneOpt} must be specified alone.`;
         }
         // --以降はすべて無名オプション
         unnamedList.push(...toIterable(itr));
@@ -459,7 +469,7 @@ export function parse<OptMap extends OptionInformationMap>(
       if (!optMapAlias[arg]) {
         if (arg[0] === '-') {
           // optMapにないオプションが指定された
-          usage`unknown options: ${arg}`;
+          return usage`unknown options: ${arg}`;
         }
         unnamedList.push(arg);
         continue;
@@ -467,7 +477,7 @@ export function parse<OptMap extends OptionInformationMap>(
       const { name, info } = optMapAlias[arg];
       if (aloneOpt || (prevOpt && info.alone)) {
         // 単独で指定されるはずなのに他のオプションが指定された
-        usage`${aloneOpt || arg} must be specified alone.`;
+        return usage`${aloneOpt || arg} must be specified alone.`;
       }
       prevOpt = arg;
       if (info.alone) {
@@ -547,7 +557,7 @@ export function parse<OptMap extends OptionInformationMap>(
         }
         // requiredなのに指定されていなかったらエラー
         if (info.required) {
-          usage`${optArg} required`;
+          return usage`${optArg} required`;
         }
         // デフォルト値が指定されていたら設定
         if (info.default !== undefined) {
@@ -577,7 +587,7 @@ export function parse<OptMap extends OptionInformationMap>(
         value: Object.freeze(unnamedList),
       });
     } else if (unnamedList.length > 0) {
-      usage`${aloneOpt} must be specified alone.`;
+      return usage`${aloneOpt} must be specified alone.`;
     }
     // ヘルプ用文字列を追加して終了
     return Object.freeze(
@@ -585,10 +595,10 @@ export function parse<OptMap extends OptionInformationMap>(
         get: () => makeHelpString(optMap),
       }),
     ) as Options<OptMap>;
-  } catch (ex) {
-    if (optMap[helpString]?.showUsageOnError && typeof ex === 'string') {
+  } catch (ex: unknown) {
+    if (optMap[helpString]?.showUsageOnError && ex instanceof Usage) {
       // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-      process.stderr.write(`${ex}\n\n${makeHelpString(optMap)}`);
+      process.stderr.write(`${ex.message}\n\n${makeHelpString(optMap)}`);
       process.exit(1);
     }
     throw ex;
