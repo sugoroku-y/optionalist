@@ -564,23 +564,21 @@ export function parse<OptMap extends OptionInformationMap>(
           options[name] = info.default;
         }
       }
-      const min = optMap[unnamed]?.min ?? NaN;
-      if (unnamedList.length < min) {
-        usage`At least ${min} ${example(
-          // optMap[unnamed]?.minが存在しているのでoptMap[unnamed]も存在している
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          optMap[unnamed]!,
-          'unnamed_parameters',
-        )} required.`;
-      }
-      const max = optMap[unnamed]?.max ?? NaN;
-      if (unnamedList.length > max) {
-        usage`Too many ${example(
-          // optMap[unnamed]?.maxが存在しているのでoptMap[unnamed]も存在している
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          optMap[unnamed]!,
-          'unnamed_parameters',
-        )} specified(up to ${max}).`;
+      const optUnnamed = optMap[unnamed];
+      if (optUnnamed) {
+        const { min = NaN, max = NaN } = optUnnamed;
+        if (unnamedList.length < min) {
+          return usage`At least ${min} ${example(
+            optUnnamed,
+            'unnamed_parameters',
+          )} required.`;
+        }
+        if (unnamedList.length > max) {
+          return usage`Too many ${example(
+            optUnnamed,
+            'unnamed_parameters',
+          )} specified(up to ${max}).`;
+        }
       }
       // 無名オプションを追加
       Object.defineProperty(options, unnamed, {
