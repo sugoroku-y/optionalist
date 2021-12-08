@@ -506,3 +506,39 @@ test('max only', () => {
     ]),
   ).toEqual({ a: 10 });
 });
+
+// コンパイルエラーのチェック
+() => {
+  const options = optionalist.parse({
+    aaa: {
+      default: 'abc',
+    },
+    bbb: {},
+    ccc: {
+      type: 'boolean',
+      alone: true,
+    },
+    ddd: {
+      type: 'number',
+      alone: true,
+    },
+  });
+  if ('ccc' in options) {
+    options.ccc;
+    // @ts-expect-error cccがあるときdddは存在しない
+    options.ddd;
+  } else if ('ddd' in options) {
+    options.ddd - 0; // 数値なので引き算できる
+    // @ts-expect-error dddがあるときcccは存在しない
+    options.ccc;
+  } else {
+    options.aaa.slice(0); // 文字列確定なのでsliceできる
+    // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
+    options.bbb.slice(0);
+    options.bbb?.slice(0); // Optional chainingなら大丈夫
+    // @ts-expect-error cccは存在しない
+    options.ccc;
+    // @ts-expect-error dddは存在しない
+    options.ddd;
+  }
+};

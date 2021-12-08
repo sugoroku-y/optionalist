@@ -269,8 +269,10 @@ type OptionsOptional<OPTMAP extends OptionInformationMap> = {
 type OptionsAlone<OPTMAP extends OptionInformationMap> = {
   [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends { alone: true }
     ? N
-    : never]: OptionType<OPTMAP[N]>;
-};
+    : never]: { [K in N]: OptionType<OPTMAP[N]> };
+} extends infer R
+  ? R[keyof R]
+  : never;
 
 type OptionUnnamed = {
   readonly [unnamed]: readonly string[];
