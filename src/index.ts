@@ -440,8 +440,8 @@ export function parse<OptMap extends OptionInformationMap>(
               return error`The default value of the ${optArg} parameter must be a string.: ${defaultValue}`;
             }
             break;
-          // @ts-expect-error boolean型ではdefault値は指定できないが、念のため
-          case 'boolean':
+          // number型、string型以外(つまりboolean型)ではdefault値は指定できないが、念のため
+          default:
             return error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
         }
       }
