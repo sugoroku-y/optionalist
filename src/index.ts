@@ -532,7 +532,7 @@ export function parse<OptMap extends OptionInformationMap>(
                   r.value.toUpperCase(),
                 ]
               : [info.constraints, r.value];
-            const index = constraints.findIndex(v => v === findValue);
+            const index = constraints.indexOf(findValue);
             if (index < 0) {
               return usage`${arg} must be one of ${info.constraints.join(
                 ', ',
