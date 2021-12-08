@@ -7,7 +7,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsconfig": "src/tsconfig.json"
+      "tsconfig": "test/tsconfig.json"
     }
   },
   "collectCoverageFrom": [

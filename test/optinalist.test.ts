@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as optionalist from '../src';
 import { assertNotToHaveProperty } from './asserts';
 import './toExitProcess';
+import { name as packageName, version } from './package.json';
 
 const OPTMAP = {
   [optionalist.helpString]: {
@@ -338,9 +339,6 @@ test('optionalist invalid optMap', () => {
   ).toThrow('The default value of the -a parameter must be a number.: 1');
 });
 test('optionalist helpstring', () => {
-  const { name: packageName, version } = JSON.parse(
-    fs.readFileSync(path.join(path.dirname(__dirname), 'package.json'), 'utf8'),
-  ) as { name: string; version: string };
   expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
@@ -473,9 +471,9 @@ test('showUsageOnError', () => {
     }),
   ).toBe(`--aaa required
 
-Version: optionalist 2.0.2
+Version: ${packageName} ${version}
 Usage:
-  npx optionalist --aaa parameter [--] [unnamed_parameters...]
+  npx ${packageName} --aaa parameter [--] [unnamed_parameters...]
 
 Options:
   --aaa parameter
@@ -485,9 +483,9 @@ Options:
 });
 test('helpString', () => {
   expect(optionalist.parse({ a: {} }, [])[optionalist.helpString])
-    .toBe(`Version: optionalist 2.0.2
+    .toBe(`Version: ${packageName} ${version}
 Usage:
-  npx optionalist [-a parameter]
+  npx ${packageName} [-a parameter]
 
 Options:
   -a parameter

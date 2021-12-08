@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as path from 'path';
+import { resolve } from 'path';
 
 function hasProperty<NAME extends string | number | symbol>(
   o: unknown,
@@ -601,35 +601,32 @@ export function parse<OptMap extends OptionInformationMap>(
  * @returns
  */
 function loadPackageJson() {
-  for (
-    let dirname =
-        ('mainModule' in process)
-          ? // istanbul ignore next メインモジュールが見つからなければ現在実行中のスクリプトのある場所から開始
-            path.dirname(
-              (process as unknown as { mainModule: { filename: string } })[
-                'mainModule'
-              ].filename,
-            )
-          : __dirname,
-      prev;
-    dirname !== prev;
-    prev = dirname, dirname = path.dirname(prev)
-  ) {
+  // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
+  if (!module.parent) {
+    // 親モジュールがない≒プログラムとしての起動ではないので空の情報を返す
+    // istanbul ignore next 同上でcoverage対象から除外
+    return {};
+  }
+  for (const path of module.parent.paths) {
+    let text;
     try {
-      // package.jsonを読み込んで解析
-      return JSON.parse(
-        fs.readFileSync(path.join(dirname, 'package.json'), 'utf8'),
-      ) as { version: string; name: string };
+      // package.jsonを読み込む
+      text = fs.readFileSync(resolve(path, '..', 'package.json'), 'utf8');
     } catch (ex: unknown) {
-      // istanbul ignore next ファイルが見つからない、以外のエラーはエラーとする
+      // ファイルが見つからない、以外のエラーはエラーとする
+      // istanbul ignore next ファイルが存在しない以外のエラーを発生させるのは大変なのでcoverage対象から除外
       if (!hasProperty(ex, 'code') || ex.code !== 'ENOENT') {
-        // istanbul ignore next
+        // istanbul ignore next 同上でcoverage対象から除外
         throw ex;
       }
       // ファイルが見つからなかったらさかのぼりを継続
+      // istanbul ignore next package.jsonがない場所を用意できないのでcoverage対象から除外
+      continue;
     }
+    return JSON.parse(text) as { version?: string; name?: string };
   }
-  // istanbul ignore next package.jsonが見つからなければエラー
+  // package.jsonが見つからなければエラー
+  // istanbul ignore next module.parent.pathsから遡って見つからないことはあり得ないのでcoverage対象から除外
   return error`package.json not found`;
 }
 
