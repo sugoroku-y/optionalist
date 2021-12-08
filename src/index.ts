@@ -1,10 +1,12 @@
 import * as fs from 'fs';
 import { resolve } from 'path';
 
+// istanbul ignore next 例外の型チェックでしか使われていないのでcoverage対象から除外
 function hasProperty<NAME extends string | number | symbol>(
   o: unknown,
   name: NAME,
 ): o is { [N in NAME]: unknown } {
+  // istanbul ignore next 同上で除外
   return typeof o === 'object' && o !== null && name in o;
 }
 
@@ -652,6 +654,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
 ): string {
   const { version, name: processName } = loadPackageJson();
   const help: string[] = [];
+  /* istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外 */
   if (processName && version) {
     help.push(`Version: ${processName} ${version}`, 'Usage:');
   }
@@ -675,7 +678,11 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   }
   help.push(
     ...aloneList.map(
-      option => `  npx ${processName ?? process.argv[1]} ${option}`,
+      option =>
+        `  npx ${
+          // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
+          processName ?? process.argv[1]
+        } ${option}`,
     ),
   );
   {
