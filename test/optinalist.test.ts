@@ -542,3 +542,19 @@ test('max only', () => {
     options.ddd;
   }
 };
+() => {
+  const options = optionalist.parse({
+    aaa: {},
+    bbb: {},
+    ccc: {
+      required: true,
+    },
+  });
+  // @ts-expect-error aaaは省略可能なのでundefinedの可能性がある
+  options.aaa.slice();
+  options.aaa?.slice(); // Optional chainingなら大丈夫
+  // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
+  options.bbb.slice();
+  options.bbb?.slice(); // Optional chainingなら大丈夫
+  options.ccc.slice(); /// cccは必須なので必ず存在している
+};

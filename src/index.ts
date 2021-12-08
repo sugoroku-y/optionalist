@@ -10,8 +10,6 @@ function hasProperty<NAME extends string | number | symbol>(
   return typeof o === 'object' && o !== null && name in o;
 }
 
-type ExcludeEmpty<T> = { [K in never]: never } extends T ? never : T;
-
 type Normalize<T> = T extends { [K in never]: never }
   ? { [K in keyof T]: T[K] }
   : never;
@@ -288,7 +286,7 @@ type OptionHelpString = {
 type Options<OPTMAP extends OptionInformationMap> = Normalize<
   (
     | (OptionUnnamed & OptionsEssential<OPTMAP> & OptionsOptional<OPTMAP>)
-    | ExcludeEmpty<OptionsAlone<OPTMAP>>
+    | OptionsAlone<OPTMAP>
   ) &
     OptionHelpString
 >;
