@@ -435,7 +435,6 @@ export function parse<OptMap extends OptionInformationMap>(
             }
             break;
           case undefined:
-          // eslint-disable-next-line no-fallthrough
           case 'string':
             // string型なのに文字列以外が指定された
             if (typeof defaultValue !== 'string') {
