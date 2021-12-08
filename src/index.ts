@@ -10,6 +10,30 @@ function hasProperty<NAME extends string | number | symbol>(
   return typeof o === 'object' && o !== null && name in o;
 }
 
+/**
+ * &や|で結合されたオブジェクトをまとめる。
+ *
+ * ```
+ * {
+ *   aaa: string;
+ *   bbb: number;
+ * } & {
+ *   ccc?: boolean;
+ * }
+ * ```
+ *
+ * を
+ *
+ * ```
+ * {
+ *   aaa: string;
+ *   bbb: number;
+ *   ccc?: boolean;
+ * }
+ * ```
+ *
+ * にする。
+ */
 type Normalize<T> = T extends { [K in never]: never }
   ? { [K in keyof T]: T[K] }
   : never;
@@ -272,10 +296,16 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = {
   ? R[keyof R]
   : never;
 
+/**
+ * 名前無しオプション
+ */
 type OptionUnnamed = {
   readonly [unnamed]: readonly string[];
 };
 
+/**
+ * ヘルプ用文字列
+ */
 type OptionHelpString = {
   readonly [helpString]: string;
 };
@@ -347,9 +377,16 @@ function error(...args: [TemplateStringsArray, ...unknown[]]): never {
   throw new TypeError(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
 }
 
+/**
+ * 数値の配列かどうかを判別する。
+ *
+ * @param {readonly number[] | { min?: number; max?: number }} o
+ * @returns {o is readonly number[]}
+ */
 function isNumberArray(
-  o: readonly number[] | { min?: number; max?: number },
+  o: readonly number[] | Readonly<{ min?: number; max?: number }>,
 ): o is readonly number[] {
+  // oは型が限定されているので配列かどうかの判定だけでよい
   return Array.isArray(o);
 }
 
@@ -423,6 +460,7 @@ export function parse<OptMap extends OptionInformationMap>(
         }
       }
       if (info.type === 'boolean' && info.required) {
+        // boolean型ではrequiredを指定できないはずだが念の為
         return error`The ${optArg} cannot set to be required.`;
       }
       if (info.default !== undefined) {
@@ -591,6 +629,7 @@ export function parse<OptMap extends OptionInformationMap>(
     // ヘルプ用文字列を追加して終了
     return Object.freeze(
       Object.defineProperty(options, helpString, {
+        // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
         get: () => makeHelpString(optMap),
       }),
     ) as Options<OptMap>;
