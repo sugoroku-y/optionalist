@@ -525,13 +525,20 @@ test('max only', () => {
   });
   if ('ccc' in options) {
     options.ccc;
+    options[optionalist.helpString].slice();
     // @ts-expect-error cccがあるときdddは存在しない
     options.ddd;
+    // @ts-expect-error cccは読み取り専用
+    options.ccc = true;
   } else if ('ddd' in options) {
     options.ddd - 0; // 数値なので引き算できる
+    options[optionalist.helpString].slice();
     // @ts-expect-error dddがあるときcccは存在しない
     options.ccc;
+    // @ts-expect-error dddは読み取り専用
+    --options.ddd;
   } else {
+    options[optionalist.helpString].slice();
     options.aaa.slice(0); // 文字列確定なのでsliceできる
     // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
     options.bbb.slice(0);
@@ -540,6 +547,10 @@ test('max only', () => {
     options.ccc;
     // @ts-expect-error dddは存在しない
     options.ddd;
+    // @ts-expect-error aaaは読み取り専用
+    options.aaa += '';
+    // @ts-expect-error bbbは読み取り専用
+    options.bbb += '';
   }
 };
 () => {
@@ -557,4 +568,10 @@ test('max only', () => {
   options.bbb.slice();
   options.bbb?.slice(); // Optional chainingなら大丈夫
   options.ccc.slice(); /// cccは必須なので必ず存在している
+  // @ts-expect-error optionsのプロパティは変更禁止
+  options.aaa = '';
+  // @ts-expect-error optionsのプロパティは変更禁止
+  options.bbb = '';
+  // @ts-expect-error optionsのプロパティは変更禁止
+  options.ccc = '';
 };

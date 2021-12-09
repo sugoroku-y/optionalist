@@ -262,7 +262,7 @@ type OptionType<OptionInfo extends OptionInformation> =
  * parseの返値に必ず存在しているプロパティ。
  */
 type OptionsEssential<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
+  readonly [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
     | {
         required: true;
       }
@@ -275,7 +275,7 @@ type OptionsEssential<OPTMAP extends OptionInformationMap> = {
  * parseの返値に存在していない可能性のあるプロパティ。
  */
 type OptionsOptional<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
+  readonly [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
     | {
         required: true;
       }
@@ -291,7 +291,7 @@ type OptionsOptional<OPTMAP extends OptionInformationMap> = {
 type OptionsAlone<OPTMAP extends OptionInformationMap> = {
   [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends { alone: true }
     ? N
-    : never]: { [K in N]: OptionType<OPTMAP[N]> };
+    : never]: { readonly [K in N]: OptionType<OPTMAP[N]> };
 } extends infer R
   ? R[keyof R]
   : never;
