@@ -13,7 +13,7 @@ optionalistはTypeScript向けに作られたコマンドラインパーザー�
 
 `optionalist.parse`にコマンドラインの詳細を渡して、解析した結果を受け取ります。
 
-```ts
+```ts:sample/src/main.ts#1
 import * as optionalist from 'optionalist';
 
 const options = optionalist.parse({
@@ -30,7 +30,7 @@ const options = optionalist.parse({
   init: {
     type: 'boolean',
     alone: true,
-    describe: 'Initialize your project.'
+    describe: 'Initialize your project.',
   },
   output: {
     type: 'string',
@@ -47,10 +47,9 @@ const options = optionalist.parse({
     type: 'boolean',
     describe: 'Specify when you want to set the watch mode.',
   },
-  type: {
-    describe: 'Specify the type of image.'
-    constraints: ['gif', 'png', 'jpg'],
-  }
+  timeout: {
+    type: 'number',
+  },
   [optionalist.unnamed]: {
     example: 'script_filename',
     describe: 'Specify the script filename(s) to execute.',
@@ -61,7 +60,6 @@ type typeof_options$1 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
-  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 } | {
@@ -75,7 +73,7 @@ type typeof_options$1 = {
 
 受け取った結果は自動的に型付けされ、デフォルト値が設定された状態になっています。
 
-```ts
+```ts:sample/src/main.ts#2
 // `alone: true`なオプションが指定されたかどうかの判定には`in`を使う
 // --helpが指定されたとき
 if ('help' in options) {
@@ -113,7 +111,6 @@ type typeof_options$2 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
-  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 } | {
@@ -132,12 +129,11 @@ type typeof_options$3 = {
   readonly output: string;
   readonly config: string;
   readonly watch?: true;
-  readonly type?: 'gif' | 'png' | 'jpg';
   readonly [optionalist.unnamed]: readonly string[];
   readonly [optionalist.helpString]: string;
 };
 
-// つまり`alone: true'`が指定されたオプションの処理をすべて終わらせないと
+// つまり`alone: true`が指定されたオプションの処理をすべて終わらせないと
 // 通常のオプションの処理を始められない。
 // プロパティはそれぞれ指定された型になっている。
 

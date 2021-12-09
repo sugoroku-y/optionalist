@@ -9,6 +9,7 @@ function watch(_:string[], _callback: (filename: string) => void): never {
   process.exit(0);
 }
 
+// ```ts:#1
 import * as optionalist from 'optionalist';
 
 const options = optionalist.parse({
@@ -64,7 +65,9 @@ type typeof_options$1 = {
   readonly init: true;
   readonly [optionalist.helpString]: string;
 };
+// ```
 
+// ```ts:#2
 // `alone: true`なオプションが指定されたかどうかの判定には`in`を使う
 // --helpが指定されたとき
 if ('help' in options) {
@@ -138,3 +141,4 @@ if (options.watch) {
   const list = options[optionalist.unnamed].slice(0);
   watch(list, file => executeFile(file));
 }
+// ```
