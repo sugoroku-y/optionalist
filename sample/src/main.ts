@@ -51,38 +51,69 @@ const options = optionalist.parse({
     describe: 'Specify the script filename(s) to execute.',
   },
 });
+options.help ? options : options.init ? options : options;
 // この時点でのoptionsは
-type typeof_options$1 = {
-  readonly output: string;
-  readonly config: string;
-  readonly watch?: true;
-  readonly [optionalist.unnamed]: readonly string[];
-  readonly [optionalist.helpString]: string;
-} | {
-  readonly help: true;
-  readonly [optionalist.helpString]: string;
-} | {
-  readonly init: true;
-  readonly [optionalist.helpString]: string;
-};
+// const options:
+//   | {
+//       readonly help: true;
+//       readonly init?: never;
+//       readonly output?: never;
+//       readonly config?: never;
+//       readonly watch?: never;
+//       readonly timeout?: never;
+//       readonly [unnamed]?: never;
+//       readonly [helpString]: string;
+//     }
+//   | {
+//       readonly init: true;
+//       readonly help?: never;
+//       readonly output?: never;
+//       readonly config?: never;
+//       readonly watch?: never;
+//       readonly timeout?: never;
+//       readonly [unnamed]?: never;
+//       readonly [helpString]: string;
+//     }
+//   | {
+//       readonly [unnamed]: readonly string[];
+//       readonly [helpString]: string;
+//       readonly help?: never;
+//       readonly init?: never;
+//       readonly output: string;
+//       readonly config: string;
+//       readonly watch?: true;
+//       readonly timeout?: number;
+//     };
 // ```
 
 // ```ts:#2
-// `alone: true`なオプションが指定されたかどうかの判定には`in`を使う
 // --helpが指定されたとき
-if ('help' in options) {
+if (options.help) {
+  options;
+  // このスコープでのoptionsは
+  // const options: {
+  //   readonly help: true;
+  //   readonly init?: never;
+  //   readonly output?: never;
+  //   readonly config?: never;
+  //   readonly watch?: never;
+  //   readonly timeout?: never;
+  //   readonly [unnamed]?: never;
+  //   readonly [helpString]: string;
+  // };
+
   // [optionalist.helpString]はコマンドの説明用文字列を返す。
   console.log(options[optionalist.helpString]);
   // この例では以下のような文字列になる。
   // Version: sample 0.0.1
   // Usage:
-  //   npx sample --output output_filename [--config config_filename] [--watch] [--] [script_filename...]
+  //   npx sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
   //   npx sample --help
   //   npx sample --init
-  //
+
   // Description:
   //   The description for command.
-  //
+
   // Options:
   //   --help, -?, -h
   //     Show this help.
@@ -94,41 +125,69 @@ if ('help' in options) {
   //     Specify the configuration file for your project.
   //   --watch
   //     Specify when you want to set the watch mode.
+  //   --timeout parameter
   //   [--] [script_filename...]
   //     Specify the script filename(s) to execute.
   //
   process.exit(0);
 }
 
+options.init ? options : options;
 // この時点でのoptionsは
-type typeof_options$2 = {
-  readonly output: string;
-  readonly config: string;
-  readonly watch?: true;
-  readonly [optionalist.unnamed]: readonly string[];
-  readonly [optionalist.helpString]: string;
-} | {
-  readonly init: true;
-  readonly [optionalist.helpString]: string;
-};
+// const options:
+//   | {
+//       readonly init: true;
+//       readonly help?: never;
+//       readonly output?: never;
+//       readonly config?: never;
+//       readonly watch?: never;
+//       readonly timeout?: never;
+//       readonly [unnamed]?: never;
+//       readonly [helpString]: string;
+//     }
+//   | {
+//       readonly [unnamed]: readonly string[];
+//       readonly [helpString]: string;
+//       readonly help?: never;
+//       readonly init?: never;
+//       readonly output: string;
+//       readonly config: string;
+//       readonly watch?: true;
+//       readonly timeout?: number;
+//     };
 
 // --initが指定されたとき
-if ('init' in options) {
+if (options.init) {
+  options;
+  // このスコープでのoptionsは
+  // const options: {
+  //   readonly init: true;
+  //   readonly help?: never;
+  //   readonly output?: never;
+  //   readonly config?: never;
+  //   readonly watch?: never;
+  //   readonly timeout?: never;
+  //   readonly [unnamed]?: never;
+  //   readonly [helpString]: string;
+  // };
+
   initializeProject();
   process.exit(0);
 }
 
+options;
 // この時点でのoptionsは
-type typeof_options$3 = {
-  readonly output: string;
-  readonly config: string;
-  readonly watch?: true;
-  readonly [optionalist.unnamed]: readonly string[];
-  readonly [optionalist.helpString]: string;
-};
+// const options: {
+//   readonly [unnamed]: readonly string[];
+//   readonly [helpString]: string;
+//   readonly help?: never;
+//   readonly init?: never;
+//   readonly output: string;
+//   readonly config: string;
+//   readonly watch?: true;
+//   readonly timeout?: number;
+// };
 
-// つまり`alone: true`が指定されたオプションの処理をすべて終わらせないと
-// 通常のオプションの処理を始められない。
 // プロパティはそれぞれ指定された型になっている。
 
 loadConfigfile(options.config);

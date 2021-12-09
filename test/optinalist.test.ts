@@ -523,18 +523,18 @@ test('max only', () => {
       alone: true,
     },
   });
-  if ('ccc' in options) {
+  if (options.ccc) {
     options.ccc;
     options[optionalist.helpString].slice();
-    // @ts-expect-error cccがあるときdddは存在しない
-    options.ddd;
+    // cccがあるときdddは存在しない
+    ((a: undefined) => a)(options.ddd);
     // @ts-expect-error cccは読み取り専用
     options.ccc = true;
-  } else if ('ddd' in options) {
+  } else if (options.ddd !== undefined) {
     options.ddd - 0; // 数値なので引き算できる
     options[optionalist.helpString].slice();
-    // @ts-expect-error dddがあるときcccは存在しない
-    options.ccc;
+    // dddがあるときcccは存在しない
+    ((a: undefined) => a)(options.ccc);
     // @ts-expect-error dddは読み取り専用
     --options.ddd;
   } else {
@@ -543,10 +543,10 @@ test('max only', () => {
     // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
     options.bbb.slice(0);
     options.bbb?.slice(0); // Optional chainingなら大丈夫
-    // @ts-expect-error cccは存在しない
-    options.ccc;
-    // @ts-expect-error dddは存在しない
-    options.ddd;
+    // cccは存在しない
+    ((a: undefined) => a)(options.ccc);
+    // dddは存在しない
+    ((a: undefined) => a)(options.ddd);
     // @ts-expect-error aaaは読み取り専用
     options.aaa += '';
     // @ts-expect-error bbbは読み取り専用

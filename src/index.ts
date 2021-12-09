@@ -11,32 +11,65 @@ function hasProperty<NAME extends string | number | symbol>(
 }
 
 /**
- * &や|で結合されたオブジェクトをまとめる。
+ * &で結合されたオブジェクト型をまとめる。
  *
  * ```
- * {
- *   aaa: string;
+ * type TEST = Normalize<
+ *   & { aaa: string }
+ *   & {
  *   bbb: number;
  * } & {
  *   ccc?: boolean;
- * }
- * ```
- *
- * を
- *
- * ```
+ * }>
+ * ->
  * {
  *   aaa: string;
  *   bbb: number;
  *   ccc?: boolean;
  * }
  * ```
- *
- * にする。
  */
 type Normalize<T> = T extends { [K in never]: never }
   ? { [K in keyof T]: T[K] }
   : never;
+
+/**
+ * |で接続された型を1つのオブジェクト型に結合する。
+ *
+ * ```
+ * type TEST = Combination<
+ *   | { aaa: string }
+ *   | { bbb: number }
+ *   | { ccc?: boolean }
+ * >;
+ * ->
+ * {
+ *   aaa: string;
+ *   bbb: number;
+ *   ccc?: boolean;
+ * }
+ * ```
+ */
+type Combination<T> = (
+  T extends unknown ? (arg: T) => unknown : never
+) extends (arg: infer C) => unknown
+  ? Normalize<C>
+  : never;
+
+/**
+ * オブジェクト型のすべての値の型を抽出する。
+ *
+ * ```
+ * type TEST = Values<{
+ *    aaa: number;
+ *    bbb: string;
+ *    ccc?: boolean;
+ * }>;
+ * ->
+ * number | string | boolean | undefined
+ * ```
+ */
+type Values<T extends object> = T[keyof T];
 
 /**
  * 各オプションの説明文を取得するためのシンボル。
@@ -259,67 +292,51 @@ type OptionType<OptionInfo extends OptionInformation> =
     : string;
 
 /**
- * parseの返値に必ず存在しているプロパティ。
+ * 他のオプションと一緒に使用するオプションで指定されるプロパティ。
  */
-type OptionsEssential<OPTMAP extends OptionInformationMap> = {
-  readonly [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
-    | {
-        required: true;
-      }
-    | { default: OptionType<OPTMAP[N]> }
+type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
+  | {
+      [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
+        ? N extends string
+          ? // aloneが指定されているものは存在しないプロパティ
+            OPTMAP[N] extends { alone: true }
+            ? { readonly [K in N]?: never }
+            : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
+            OPTMAP[N] extends { required: true } | { default: OptType }
+            ? { readonly [K in N]: OptType }
+            : // それ以外は存在していない可能性のあるプロパティ
+              { readonly [K in N]?: OptType }
+          : // プロパティキーが文字列以外の場合は除外
+            never
+        : never;
+    }[keyof OPTMAP]
+  | {
+      readonly [unnamed]: readonly string[];
+      readonly [helpString]: string;
+    }
+>;
+/**
+ * 単独で指定されるオプションのプロパティ
+ */
+type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
+  [N in keyof OPTMAP as OPTMAP[N] extends { alone: true }
     ? N
-    : never]: OptionType<OPTMAP[N]>;
-};
-
-/**
- * parseの返値に存在していない可能性のあるプロパティ。
- */
-type OptionsOptional<OPTMAP extends OptionInformationMap> = {
-  readonly [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends
-    | {
-        required: true;
-      }
-    | { alone: true }
-    | { default: OptionType<OPTMAP[N]> }
-    ? never
-    : N]?: OptionType<OPTMAP[N]>;
-};
-
-/**
- * 単独で指定されるオプション
- */
-type OptionsAlone<OPTMAP extends OptionInformationMap> = {
-  [N in keyof Omit<OPTMAP, symbol> as OPTMAP[N] extends { alone: true }
-    ? N
-    : never]: { readonly [K in N]: OptionType<OPTMAP[N]> };
-} extends infer R
-  ? R[keyof R]
-  : never;
-
-/**
- * 名前無しオプション
- */
-type OptionUnnamed = {
-  readonly [unnamed]: readonly string[];
-};
-
-/**
- * ヘルプ用文字列
- */
-type OptionHelpString = {
-  readonly [helpString]: string;
-};
+    : never]: Normalize<
+    { readonly [K in N]: OptionType<OPTMAP[N]> } & {
+      readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
+    } & {
+      readonly [unnamed]?: never;
+      readonly [helpString]: string;
+    }
+  >;
+}>;
 
 /**
  * parseの返値の型。
  */
-type Options<OPTMAP extends OptionInformationMap> = Normalize<
-  (
-    | (OptionUnnamed & OptionsEssential<OPTMAP> & OptionsOptional<OPTMAP>)
-    | OptionsAlone<OPTMAP>
-  ) &
-    OptionHelpString
->;
+type Options<OPTMAP extends OptionInformationMap> =
+  | OptionsAccompany<OPTMAP>
+  | OptionsAlone<OPTMAP>;
 
 /**
  * never型になっているかどうかチェックする。
