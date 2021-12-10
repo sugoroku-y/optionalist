@@ -1,10 +1,9 @@
-import * as optionalist from '../src';
-import { assertNotToHaveProperty } from './asserts';
+import { parse, unnamed, helpString } from '../src';
 import './toExitProcess';
 import { name as packageName, version } from './package.json';
 
 const OPTMAP = {
-  [optionalist.helpString]: {
+  [helpString]: {
     describe: `
     UnitTest for optionalist.
       test for indent
@@ -52,284 +51,259 @@ const OPTMAP = {
     constraints: ['volkswagen', 'sports'],
     ignoreCase: true,
   },
-  [optionalist.unnamed]: {
+  [unnamed]: {
     example: 'argument',
     describe: 'arguments for command',
   },
 } as const;
 
 test('optionalist normal', () => {
-  expect(optionalist.parse(OPTMAP, ['--delta', 'test'])).toEqual({
+  expect(parse(OPTMAP, ['--delta', 'test'])).toEqual({
     delta: 'test',
     bravo: 1,
     foxtrot: 'racoondog',
+    [unnamed]: [],
+  });
+});
+test('optionalist normal', () => {
+  expect(parse(OPTMAP, ['--alpha', 'bet', '--delta', 'test'])).toEqual({
+    alpha: 'bet',
+    delta: 'test',
+    foxtrot: 'racoondog',
+    bravo: 1,
+    [unnamed]: [],
   });
 });
 test('optionalist normal', () => {
   expect(
-    optionalist.parse(OPTMAP, ['--alpha', 'bet', '--delta', 'test']),
-  ).toEqual({ alpha: 'bet', delta: 'test', foxtrot: 'racoondog', bravo: 1 });
-});
-test('optionalist normal', () => {
-  expect(
-    optionalist.parse(OPTMAP, [
-      '--alpha',
-      'bet',
-      '--bravo',
-      '2',
-      '--delta',
-      'test',
-    ]),
-  ).toEqual({ alpha: 'bet', delta: 'test', foxtrot: 'racoondog', bravo: 2 });
+    parse(OPTMAP, ['--alpha', 'bet', '--bravo', '2', '--delta', 'test']),
+  ).toEqual({
+    alpha: 'bet',
+    delta: 'test',
+    foxtrot: 'racoondog',
+    bravo: 2,
+    [unnamed]: [],
+  });
 });
 test('optionalist alone', () => {
-  expect(optionalist.parse(OPTMAP, ['--charlie'])).toEqual({ charlie: true });
+  expect(parse(OPTMAP, ['--charlie'])).toEqual({ charlie: true });
 });
 test('optionalist alone', () => {
-  expect(optionalist.parse(OPTMAP, ['--echo', 'string'])).toEqual({
+  expect(parse(OPTMAP, ['--echo', 'string'])).toEqual({
     echo: 'string',
   });
 });
 test('optionalist unnamed', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'test',
-    'aaa',
-    'bbb',
-    'ccc',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options[optionalist.unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
+  expect(parse(OPTMAP, ['--delta', 'test', 'aaa', 'bbb', 'ccc'])).toEqual({
+    bravo: 1,
+    delta: 'test',
+    foxtrot: 'racoondog',
+    [unnamed]: ['aaa', 'bbb', 'ccc'],
+  });
 });
 test('optionalist unnamed', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'test',
-    '--',
-    '--aaa',
-    '-bbb',
-    '-ccc',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options[optionalist.unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
+  expect(
+    parse(OPTMAP, ['--delta', 'test', '--', '--aaa', '-bbb', '-ccc']),
+  ).toEqual({
+    bravo: 1,
+    delta: 'test',
+    foxtrot: 'racoondog',
+    [unnamed]: ['--aaa', '-bbb', '-ccc'],
+  });
 });
 test('optionalist string constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--golf',
-    'volkswagen',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.golf).toBe('volkswagen');
+  expect(
+    parse(OPTMAP, ['--delta', 'required', '--golf', 'volkswagen']),
+  ).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    golf: 'volkswagen',
+    [unnamed]: [],
+  });
 });
 test('optionalist string constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--golf',
-    'sports',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.golf).toBe('sports');
+  expect(parse(OPTMAP, ['--delta', 'required', '--golf', 'sports'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    golf: 'sports',
+    [unnamed]: [],
+  });
 });
 test('optionalist string constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--GOLF',
-    'VOLKSWAGEN',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.GOLF).toBe('volkswagen');
+  expect(
+    parse(OPTMAP, ['--delta', 'required', '--GOLF', 'VOLKSWAGEN']),
+  ).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    GOLF: 'volkswagen',
+    [unnamed]: [],
+  });
 });
 test('optionalist string constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--GOLF',
-    'SPORTS',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.GOLF).toBe('sports');
+  expect(parse(OPTMAP, ['--delta', 'required', '--GOLF', 'SPORTS'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    GOLF: 'sports',
+    [unnamed]: [],
+  });
 });
 test('optionalist number constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--hotel',
-    '1234',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.hotel).toBe(1234);
+  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '1234'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    hotel: 1234,
+    [unnamed]: [],
+  });
 });
 test('optionalist number constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--hotel',
-    '5678',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.hotel).toBe(5678);
+  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '5678'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    hotel: 5678,
+    [unnamed]: [],
+  });
 });
 test('optionalist number constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--hotel',
-    '9012',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.hotel).toBe(9012);
+  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '9012'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    hotel: 9012,
+    [unnamed]: [],
+  });
 });
 test('optionalist number range constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--india',
-    '1000',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.india).toBe(1000);
+  expect(parse(OPTMAP, ['--delta', 'required', '--india', '1000'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    india: 1000,
+    [unnamed]: [],
+  });
 });
 test('optionalist number range constraints', () => {
-  const options = optionalist.parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--india',
-    '9999',
-  ]);
-  assertNotToHaveProperty(options, 'charlie');
-  assertNotToHaveProperty(options, 'echo');
-  expect(options.india).toBe(9999);
+  expect(parse(OPTMAP, ['--delta', 'required', '--india', '9999'])).toEqual({
+    bravo: 1,
+    delta: 'required',
+    foxtrot: 'racoondog',
+    india: 9999,
+    [unnamed]: [],
+  });
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, [])).toThrow('--delta required');
+  expect(() => parse(OPTMAP, [])).toThrow('--delta required');
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--unknown'])).toThrow(
+  expect(() => parse(OPTMAP, ['--unknown'])).toThrow(
     'unknown options: --unknown',
   );
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--alpha'])).toThrow(
-    '--alpha needs a parameter',
-  );
+  expect(() => parse(OPTMAP, ['--alpha'])).toThrow('--alpha needs a parameter');
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--bravo'])).toThrow(
+  expect(() => parse(OPTMAP, ['--bravo'])).toThrow(
     '--bravo needs a number parameter as the b-value',
   );
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--bravo', 'abc'])).toThrow(
+  expect(() => parse(OPTMAP, ['--bravo', 'abc'])).toThrow(
     '--bravo needs a number parameter as the b-value: abc',
   );
 });
 test('optionalist usage error', () => {
-  expect(() =>
-    optionalist.parse(OPTMAP, ['--bravo', 'abc', '--charlie']),
-  ).toThrow('--bravo needs a number parameter as the b-value: abc');
+  expect(() => parse(OPTMAP, ['--bravo', 'abc', '--charlie'])).toThrow(
+    '--bravo needs a number parameter as the b-value: abc',
+  );
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--charlie', '111'])).toThrow(
+  expect(() => parse(OPTMAP, ['--charlie', '111'])).toThrow(
     '--charlie must be specified alone.',
   );
 });
 test('optionalist usage error', () => {
-  expect(() => optionalist.parse(OPTMAP, ['--charlie', '--', '-111'])).toThrow(
+  expect(() => parse(OPTMAP, ['--charlie', '--', '-111'])).toThrow(
+    '--charlie must be specified alone.',
+  );
+});
+test('optionalist usage error', () => {
+  expect(() => parse(OPTMAP, ['--alpha', 'beta', '--charlie'])).toThrow(
     '--charlie must be specified alone.',
   );
 });
 test('optionalist usage error', () => {
   expect(() =>
-    optionalist.parse(OPTMAP, ['--alpha', 'beta', '--charlie']),
-  ).toThrow('--charlie must be specified alone.');
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'german']),
+    parse(OPTMAP, ['--delta', 'required', '--golf', 'german']),
   ).toThrow('--golf must be one of volkswagen, sports');
 });
 test('optionalist usage error', () => {
   expect(() =>
-    optionalist.parse(OPTMAP, ['--delta', 'required', '--golf', 'SPORTS']),
+    parse(OPTMAP, ['--delta', 'required', '--golf', 'SPORTS']),
   ).toThrow('--golf must be one of volkswagen, sports');
 });
 test('optionalist usage error', () => {
-  expect(() =>
-    optionalist.parse(OPTMAP, ['--delta', 'required', '--hotel', '0']),
-  ).toThrow('--hotel must be one of 1234, 5678, 9012.');
+  expect(() => parse(OPTMAP, ['--delta', 'required', '--hotel', '0'])).toThrow(
+    '--hotel must be one of 1234, 5678, 9012.',
+  );
 });
 test('optionalist usage error', () => {
   expect(() =>
-    optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '999']),
+    parse(OPTMAP, ['--delta', 'required', '--india', '999']),
   ).toThrow('--india must be greater than or equal to 1000.');
 });
 test('optionalist usage error', () => {
   expect(() =>
-    optionalist.parse(OPTMAP, ['--delta', 'required', '--india', '10000']),
+    parse(OPTMAP, ['--delta', 'required', '--india', '10000']),
   ).toThrow('--india must be less than or equal to 9999.');
 });
 test('optionalist usage error', () => {
+  expect(() => parse({ [unnamed]: { min: 2, max: 3 } }, ['111'])).toThrow(
+    'At least 2 unnamed_parameters required.',
+  );
   expect(() =>
-    optionalist.parse({ [optionalist.unnamed]: { min: 2, max: 3 } }, ['111']),
-  ).toThrow('At least 2 unnamed_parameters required.');
-  expect(() =>
-    optionalist.parse(
-      { [optionalist.unnamed]: { min: 2, max: 3, example: 'ppp' } },
-      ['111'],
-    ),
+    parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, ['111']),
   ).toThrow('At least 2 ppp required.');
 });
 test('optionalist usage error', () => {
   expect(() =>
-    optionalist.parse({ [optionalist.unnamed]: { min: 2, max: 3 } }, [
+    parse({ [unnamed]: { min: 2, max: 3 } }, ['111', '222', '333', '444']),
+  ).toThrow('Too many unnamed_parameters specified(up to 3).');
+  expect(() =>
+    parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, [
       '111',
       '222',
       '333',
       '444',
     ]),
-  ).toThrow('Too many unnamed_parameters specified(up to 3).');
-  expect(() =>
-    optionalist.parse(
-      { [optionalist.unnamed]: { min: 2, max: 3, example: 'ppp' } },
-      ['111', '222', '333', '444'],
-    ),
   ).toThrow('Too many ppp specified(up to 3).');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    optionalist.parse({ a: { default: 1 } }, ['-a', '2']),
+    parse({ a: { default: 1 } }, ['-a', '2']),
   ).toThrow('The default value of the -a parameter must be a string.: 1');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    optionalist.parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
+    parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
   ).toThrow('The default value of the -a parameter cannot be specified.: 1');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    optionalist.parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
+    parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
   ).toThrow('The -a cannot set to be required.');
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
-    optionalist.parse(
+    parse(
       // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
       { a: { type: 'number', default: '1' } },
       ['-a', '2'],
@@ -337,7 +311,7 @@ test('optionalist invalid optMap', () => {
   ).toThrow('The default value of the -a parameter must be a number.: 1');
 });
 test('optionalist helpstring', () => {
-  expect(optionalist.parse(OPTMAP, ['--charlie'])[optionalist.helpString])
+  expect(parse(OPTMAP, ['--charlie'])[helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
   npx ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--golf parameter] [--hotel parameter] [--india parameter] [--GOLF parameter] [--] [argument...]
@@ -368,8 +342,8 @@ test('process.argv', () => {
   let saved;
   [saved, process.argv] = [process.argv, ['abc', 'def', 'ghi']];
   try {
-    const x = optionalist.parse({ a: {}, b: {}, c: {} });
-    expect(x[optionalist.unnamed]).toEqual(['ghi']);
+    const x = parse({ a: {}, b: {}, c: {} });
+    expect(x[unnamed]).toEqual(['ghi']);
   } finally {
     process.argv = saved;
   }
@@ -377,7 +351,7 @@ test('process.argv', () => {
 test('never', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    optionalist.parse({ a: { type: 'unknown', default: 1 } }, []),
+    parse({ a: { type: 'unknown', default: 1 } }, []),
   ).toThrow('unknown type: unknown for the -a parameter');
 });
 
@@ -449,16 +423,16 @@ test('showUsageOnError', () => {
   expect(
     stream(process.stderr, () => {
       expect(() => {
-        optionalist.parse(
+        parse(
           {
-            [optionalist.helpString]: {
+            [helpString]: {
               showUsageOnError: true,
             },
             aaa: {
               describe: 'test',
               required: true,
             },
-            [optionalist.unnamed]: {
+            [unnamed]: {
               min: 0,
               max: Infinity,
             },
@@ -480,7 +454,7 @@ Options:
 `);
 });
 test('helpString', () => {
-  expect(optionalist.parse({ a: {} }, [])[optionalist.helpString])
+  expect(parse({ a: {} }, [])[helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
   npx ${packageName} [-a parameter]
@@ -492,86 +466,197 @@ Options:
 
 test('min only', () => {
   expect(
-    optionalist.parse({ a: { type: 'number', constraints: { min: 10 } } }, [
-      '-a',
-      '10',
-    ]),
-  ).toEqual({ a: 10 });
+    parse({ a: { type: 'number', constraints: { min: 10 } } }, ['-a', '10']),
+  ).toEqual({ a: 10, [unnamed]: [] });
 });
 test('max only', () => {
   expect(
-    optionalist.parse({ a: { type: 'number', constraints: { max: 10 } } }, [
-      '-a',
-      '10',
-    ]),
-  ).toEqual({ a: 10 });
+    parse({ a: { type: 'number', constraints: { max: 10 } } }, ['-a', '10']),
+  ).toEqual({ a: 10, [unnamed]: [] });
 });
 
-// コンパイルエラーのチェック
+/**
+ * AとBが型として一致するかどうかを判定する。
+ */
+type Equal<A, B> = (<T>(a: A) => T extends A ? 1 : 2) extends <T>(
+  a: B,
+) => T extends B ? 1 : 2
+  ? true
+  : false;
+
+/**
+ * 引数に指定したインスタンスの型がSに一致するかどうかをチェックする。
+ *
+ * 一致しない場合はコンパイルエラーになる。
+ *
+ * 実態はないので実際には実行してはいけない。
+ */
+declare function TypeOf<T>(a: T): {
+  isExpectedToBe<S>(
+    ...args: Equal<S, T> extends true ? [] : ['型が一致しません']
+  ): void;
+};
+
 () => {
-  const options = optionalist.parse({
-    aaa: {
-      default: 'abc',
-    },
-    bbb: {},
-    ccc: {
-      type: 'boolean',
-      alone: true,
-    },
-    ddd: {
-      type: 'number',
-      alone: true,
-    },
+  // コンパイルエラーのチェック
+  /**
+   * | name  | type      | nature   | optional |
+   * | :---- | :-------- | :------- | :------- |
+   * | aaa   | (string)  | -        | true     |
+   * | bbb   | (string)  | required | false    |
+   * | ccc   | (string)  | default  | false    |
+   * | ddd   | (string)  | alone    | -        |
+   * | eee   | number    | -        | true     |
+   * | fff   | number    | required | false    |
+   * | ggg   | number    | default  | false    |
+   * | hhh   | number    | alone    | -        |
+   * | iii   | boolean   | -        | true     |
+   * | jjj   | boolean   | alone    | -        |
+   * | kkk   | string    | -        | true     |
+   * | lll   | string    | required | false    |
+   * | mmm   | string    | default  | false    |
+   * | nnn   | string    | alone    | -        |
+   *
+   * ※ booleanにはrequired/defaultを指定できない
+   */
+  const options = parse({
+    aaa: {},
+    bbb: { required: true },
+    ccc: { default: 'abc' },
+    ddd: { alone: true },
+    eee: { type: 'number' },
+    fff: { type: 'number', required: true },
+    ggg: { type: 'number', default: 1 },
+    hhh: { type: 'number', alone: true },
+    iii: { type: 'boolean' },
+    jjj: { type: 'boolean', alone: true },
+    kkk: { type: 'string' },
+    lll: { type: 'string', required: true },
+    mmm: { type: 'string', default: 'abc' },
+    nnn: { type: 'string', alone: true },
   });
-  if (options.ccc) {
-    options.ccc;
-    options[optionalist.helpString].slice();
-    // cccがあるときdddは存在しない
-    ((a: undefined) => a)(options.ddd);
-    // @ts-expect-error cccは読み取り専用
-    options.ccc = true;
-  } else if (options.ddd !== undefined) {
-    options.ddd - 0; // 数値なので引き算できる
-    options[optionalist.helpString].slice();
-    // dddがあるときcccは存在しない
-    ((a: undefined) => a)(options.ccc);
-    // @ts-expect-error dddは読み取り専用
-    --options.ddd;
+  options.ccc ? options : options.ddd !== undefined ? options : options;
+  // それぞれの型チェック
+  if (options.ddd !== undefined) {
+    // dddが有効な場合はdddとhelpStringだけ使える
+    TypeOf(options).isExpectedToBe<{
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
+      readonly ddd: string;
+      readonly eee?: never;
+      readonly fff?: never;
+      readonly ggg?: never;
+      readonly hhh?: never;
+      readonly iii?: never;
+      readonly jjj?: never;
+      readonly kkk?: never;
+      readonly lll?: never;
+      readonly mmm?: never;
+      readonly nnn?: never;
+      readonly [unnamed]?: never;
+      readonly [helpString]: string;
+    }>();
+  } else if (options.hhh !== undefined) {
+    // hhhが有効な場合はhhhとhelpStringだけ使える
+    TypeOf(options).isExpectedToBe<{
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
+      readonly ddd?: never;
+      readonly eee?: never;
+      readonly fff?: never;
+      readonly ggg?: never;
+      readonly hhh: number;
+      readonly iii?: never;
+      readonly jjj?: never;
+      readonly kkk?: never;
+      readonly lll?: never;
+      readonly mmm?: never;
+      readonly nnn?: never;
+      readonly [unnamed]?: never;
+      readonly [helpString]: string;
+    }>();
+  } else if (options.jjj) {
+    // jjjが有効な場合はjjjとhelpStringだけ使える
+    TypeOf(options).isExpectedToBe<{
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
+      readonly ddd?: never;
+      readonly eee?: never;
+      readonly fff?: never;
+      readonly ggg?: never;
+      readonly hhh?: never;
+      readonly iii?: never;
+      readonly jjj: true;
+      readonly kkk?: never;
+      readonly lll?: never;
+      readonly mmm?: never;
+      readonly nnn?: never;
+      readonly [unnamed]?: never;
+      readonly [helpString]: string;
+    }>();
+  } else if (options.nnn !== undefined) {
+    // nnnが有効な場合はnnnとhelpStringだけ使える
+    TypeOf(options).isExpectedToBe<{
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
+      readonly ddd?: never;
+      readonly eee?: never;
+      readonly fff?: never;
+      readonly ggg?: never;
+      readonly hhh?: never;
+      readonly iii?: never;
+      readonly jjj?: never;
+      readonly kkk?: never;
+      readonly lll?: never;
+      readonly mmm?: never;
+      readonly nnn: string;
+      readonly [unnamed]?: never;
+      readonly [helpString]: string;
+    }>();
   } else {
-    options[optionalist.helpString].slice();
-    options.aaa.slice(0); // 文字列確定なのでsliceできる
-    // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
-    options.bbb.slice(0);
-    options.bbb?.slice(0); // Optional chainingなら大丈夫
-    // cccは存在しない
-    ((a: undefined) => a)(options.ccc);
-    // dddは存在しない
-    ((a: undefined) => a)(options.ddd);
-    // @ts-expect-error aaaは読み取り専用
-    options.aaa += '';
-    // @ts-expect-error bbbは読み取り専用
-    options.bbb += '';
+    // aloneなオプションがどれも指定されていないときはaloneでないオプションすべてが使える。aloneなオプションはどれも使えない
+    TypeOf(options).isExpectedToBe<{
+      readonly aaa?: string;
+      readonly bbb: string;
+      readonly ccc: string;
+      readonly ddd?: never;
+      readonly eee?: number;
+      readonly fff: number;
+      readonly ggg: number;
+      readonly hhh?: never;
+      readonly iii?: true;
+      readonly jjj?: never;
+      readonly kkk?: string;
+      readonly lll: string;
+      readonly mmm: string;
+      readonly nnn?: never;
+      readonly [unnamed]: readonly string[];
+      readonly [helpString]: string;
+    }>();
   }
 };
 () => {
-  const options = optionalist.parse({
-    aaa: {},
-    bbb: {},
-    ccc: {
-      required: true,
-    },
+  // 組み合わせエラーチェック
+  parse({
+    // @ts-expect-error booleanにはrequiredを指定できない
+    aaa: { type: 'boolean', required: true },
+    // @ts-expect-error booleanにはdefaultを指定できない
+    bbb: { type: 'boolean', default: 'true' },
+    // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+    ccc: { alone: true, required: true },
+    // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+    ddd: { type: 'number', alone: true, required: true },
+    // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+    eee: { alone: true, default: 'true' },
+    // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+    fff: { type: 'number', alone: true, default: 1 },
+    // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+    ggg: { required: true, default: 'true' },
+    // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+    hhh: { type: 'number', required: true, default: 1 },
   });
-  // @ts-expect-error aaaは省略可能なのでundefinedの可能性がある
-  options.aaa.slice();
-  options.aaa?.slice(); // Optional chainingなら大丈夫
-  // @ts-expect-error bbbは省略可能なのでundefinedの可能性がある
-  options.bbb.slice();
-  options.bbb?.slice(); // Optional chainingなら大丈夫
-  options.ccc.slice(); /// cccは必須なので必ず存在している
-  // @ts-expect-error optionsのプロパティは変更禁止
-  options.aaa = '';
-  // @ts-expect-error optionsのプロパティは変更禁止
-  options.bbb = '';
-  // @ts-expect-error optionsのプロパティは変更禁止
-  options.ccc = '';
 };

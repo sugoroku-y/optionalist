@@ -639,6 +639,7 @@ export function parse<OptMap extends OptionInformationMap>(
       // 無名オプションを追加
       Object.defineProperty(options, unnamed, {
         value: Object.freeze(unnamedList),
+        enumerable: true,
       });
     } else if (unnamedList.length > 0) {
       return usage`${aloneOpt} must be specified alone.`;
