@@ -111,13 +111,12 @@ Options:
 `;
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
     prompt.cwd = resolve(__dirname, '..');
     await prompt.exec(`npm run build`);
     prompt.cwd = resolve(__dirname, '..', 'sample');
     await prompt.exec(`npm ci`);
     await prompt.exec(`npm run build`);
-  });
+  }, 30000);
 
   test('show help', async () => {
     await prompt.exec`node ./ --help`;
