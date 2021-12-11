@@ -419,6 +419,25 @@ function isNumberArray(
 function example(info: { example?: string }, def = 'parameter'): string {
   return info.example ?? def;
 }
+
+/**
+ * オプション名の前に`-`(hyphen)を付ける。
+ *
+ * 名前が1文字であれば`-`1文字だけ、2文字以上の名前のときは'--'を付ける。
+ * @template NAME
+ * @param {NAME} name
+ * @returns
+ */
+function hyphenate(name: string): `${'--' | '-'}${string}` {
+  if (name.length === 0) {
+    throw new Error('empty option name');
+  }
+  if (name.charAt(0) === '-') {
+    throw new Error(`Invalid option name: ${name}`);
+  }
+  return `${name.length > 1 ? '--' : '-'}${name}`;
+}
+
 /**
  * コマンドラインをoptMapにしたがって解析する。
  *
@@ -448,8 +467,7 @@ export function parse<OptMap extends OptionInformationMap>(
       [name: string]: { name: string; info: OptionInformation };
     } = {};
     for (const [name, info] of Object.entries(optMap)) {
-      // 1文字だけのときは`-`も一つ
-      const optArg = `${name.length > 1 ? '--' : '-'}${name}`;
+    const optArg = hyphenate(name);
       // 型指定のチェック
       switch (info.type) {
         case undefined:
@@ -472,8 +490,7 @@ export function parse<OptMap extends OptionInformationMap>(
         for (const alias of typeof info.alias === 'string'
           ? [info.alias]
           : info.alias) {
-          const optAlias = `${alias.length > 1 ? '--' : '-'}${alias}`;
-          optMapAlias[optAlias] = { name, info };
+        optMapAlias[hyphenate(alias)] = { name, info };
         }
       }
       if (info.type === 'boolean' && info.required) {
@@ -606,14 +623,13 @@ export function parse<OptMap extends OptionInformationMap>(
     // 単独オプションが指定されていなかったらデフォルト値の設定を行う
     if (!aloneOpt) {
       for (const [name, info] of Object.entries(optMap)) {
-        const optArg = `${name.length > 1 ? '--' : '-'}${name}`;
         // 指定されていればスキップ
         if (name in options) {
           continue;
         }
         // requiredなのに指定されていなかったらエラー
         if (info.required) {
-          return usage`${optArg} required`;
+          return usage`${hyphenate(name)} required`;
         }
         // デフォルト値が指定されていたら設定
         if (info.default !== undefined) {
@@ -719,9 +735,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
-      `${name.length > 1 ? '--' : '-'}${name}${
-        info.type === 'boolean' ? '' : ' ' + example(info)
-      }`,
+      `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
     );
   }
   if (requiredList.length + optionalList.length > 0) {
@@ -758,7 +772,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
       }
     }
     help.push(
-      `  ${optNames.map(n => `${n.length > 1 ? '--' : '-'}${n}`).join(', ')}${
+      `  ${optNames.map(hyphenate).join(', ')}${
         info.type === 'boolean' ? '' : ' ' + example(info)
       }`,
       ...indent(info.describe, '    '),
