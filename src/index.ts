@@ -728,8 +728,9 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const help: string[] = [];
   /* istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外 */
   if (processName && version) {
-    help.push(`Version: ${processName} ${version}`, 'Usage:');
+    help.push(`Version: ${processName} ${version}`);
   }
+  help.push('Usage:');
   const requiredList: string[] = [];
   const optionalList: string[] = [];
   const aloneList: string[] = [];
@@ -758,10 +759,19 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   {
     const describe = indent(optMap[helpString]?.describe, '  ');
     if (describe.length) {
-      help.push('', 'Description:', ...describe);
+      help.push(
+        // 説明の前に改行を入れる。
+        '',
+        'Description:',
+        ...describe,
+      );
     }
   }
-  help.push('', 'Options:');
+  help.push(
+    // オプションの説明の前に改行を入れる。
+    '',
+    'Options:',
+  );
   for (const [name, info] of Object.entries(optMap)) {
     const optNames = [name];
     if (info.alias) {
