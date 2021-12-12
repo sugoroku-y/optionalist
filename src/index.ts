@@ -520,11 +520,17 @@ export function parse<OptMap extends OptionInformationMap>(
       }
     }
     // ↑ optMapの不備はここから上でerror`～`で投げる
+  // 名前付きオプション(ヘルプ用文字列付き)
+  const options = Object.defineProperty({}, helpString, {
+    // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
+    get: () => makeHelpString(optMap),
+  }) as { [name: string]: string | number | true } & {
+    readonly [helpString]: string;
+  };
+  try {
     // ↓ コマンドラインの不備はここから下でusage`～`で投げる
     // 無名オプション
     const unnamedList: string[] = [];
-    // 名前付きオプション
-    const options: { [name: string]: string | number | true } = {};
     // 単独で指定されるはずのオプション
     let aloneOpt: string | undefined;
     // 一つ前に指定されたオプション
@@ -660,17 +666,12 @@ export function parse<OptMap extends OptionInformationMap>(
     } else if (unnamedList.length > 0) {
       return usage`${aloneOpt} must be specified alone.`;
     }
-    // ヘルプ用文字列を追加して終了
-    return Object.freeze(
-      Object.defineProperty(options, helpString, {
-        // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
-        get: () => makeHelpString(optMap),
-      }),
-    ) as Options<OptMap>;
+    // 変更不可にして返す
+    return Object.freeze(options) as Options<OptMap>;
   } catch (ex: unknown) {
     if (optMap[helpString]?.showUsageOnError && ex instanceof Usage) {
       // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-      process.stderr.write(`${ex.message}\n\n${makeHelpString(optMap)}`);
+      process.stderr.write(`${ex.message}\n\n${options[helpString]}`);
       process.exit(1);
     }
     throw ex;
