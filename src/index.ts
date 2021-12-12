@@ -435,257 +435,289 @@ function hyphenate(name: string): `${'--' | '-'}${string}` {
 }
 
 /**
- * コマンドラインをoptMapにしたがって解析する。
+ * optMapに問題がないかチェックする。
  *
+ * @template OptMap
  * @param optMap 解析するための情報。
- * @param args 解析するコマンドライン。
- * 省略時はprocess.argvの3つめから開始する。
- * @throws optMapに問題がある場合はErrorを投げる。
- * argsに問題がある場合にはstringを投げる。
+ * @throws optMapに問題がある場合はTypeErrorを投げる。
  */
-export function parse<OptMap extends OptionInformationMap>(
+function assertValidOptMap<OptMap extends OptionInformationMap>(
   optMap: OptMap,
-  args?: Iterable<string>,
-): Options<OptMap> {
-  try {
-    // argsが省略されたらprocess.argvの３つ目から始める
-    const itr =
-      args?.[Symbol.iterator]() ??
-      (() => {
-        const itr = process.argv[Symbol.iterator]();
-        //２つスキップ
-        itr.next();
-        itr.next();
-        return itr;
-      })();
-    // エイリアスを含めたオプションの詳細マップ
-    const optMapAlias: {
-      [name: string]: { name: string; info: OptionInformation };
-    } = {};
-    for (const [name, info] of Object.entries(optMap)) {
-    const optArg = hyphenate(name);
-      // 型指定のチェック
+): void {
+  for (const [name, info] of Object.entries(optMap)) {
+    // 型指定のチェック
+    switch (info.type) {
+      case undefined:
+      case 'string':
+      case 'number':
+      case 'boolean':
+        break;
+      // TypeScriptのエラーになるので他のタイプは指定できないはずだが念のため
+      default:
+        checkNever(
+          info,
+          `unknown type: ${
+            (info as OptionInformation).type
+          } for the ${hyphenate(name)} parameter`,
+        );
+    }
+    if (info.type === 'boolean' && info.required) {
+      // boolean型ではrequiredを指定できないはずだが念の為
+      return error`The ${hyphenate(name)} cannot set to be required.`;
+    }
+    if (info.default !== undefined) {
+      const defaultValue = info.default;
       switch (info.type) {
+        case 'number':
+          // number型なのに数値以外が指定された
+          if (typeof defaultValue !== 'number') {
+            return error`The default value of the ${hyphenate(
+              name,
+            )} parameter must be a number.: ${defaultValue}`;
+          }
+          break;
         case undefined:
         case 'string':
-        case 'number':
-        case 'boolean':
+          // string型なのに文字列以外が指定された
+          if (typeof defaultValue !== 'string') {
+            return error`The default value of the ${hyphenate(
+              name,
+            )} parameter must be a string.: ${defaultValue}`;
+          }
           break;
-        // TypeScriptのエラーになるので他のタイプは指定できないはずだが念のため
+        // number型、string型以外(つまりboolean型)ではdefault値は指定できないが、念のため
         default:
-          checkNever(
-            info,
-            `unknown type: ${
-              (info as OptionInformation).type
-            } for the ${optArg} parameter`,
-          );
+          return error`The default value of the ${hyphenate(
+            name,
+          )} parameter cannot be specified.: ${defaultValue}`;
       }
-      // エイリアスを展開
-      optMapAlias[optArg] = { name, info };
-      if (info.alias) {
-        for (const alias of typeof info.alias === 'string'
-          ? [info.alias]
-          : info.alias) {
-        optMapAlias[hyphenate(alias)] = { name, info };
-        }
-      }
-      if (info.type === 'boolean' && info.required) {
-        // boolean型ではrequiredを指定できないはずだが念の為
-        return error`The ${optArg} cannot set to be required.`;
-      }
-      if (info.default !== undefined) {
-        const defaultValue = info.default;
-        switch (info.type) {
-          case 'number':
-            // number型なのに数値以外が指定された
-            if (typeof defaultValue !== 'number') {
-              return error`The default value of the ${optArg} parameter must be a number.: ${defaultValue}`;
-            }
-            break;
-          case undefined:
-          case 'string':
-            // string型なのに文字列以外が指定された
-            if (typeof defaultValue !== 'string') {
-              return error`The default value of the ${optArg} parameter must be a string.: ${defaultValue}`;
-            }
-            break;
-          // number型、string型以外(つまりboolean型)ではdefault値は指定できないが、念のため
-          default:
-            return error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
-        }
       if (info.alone) {
         // defaultとaloneは一緒に指定できないはずだが念の為
-        return error`The ${optArg} cannot be set to both alone and default value.`;
+        return error`The ${hyphenate(
+          name,
+        )} cannot be set to both alone and default value.`;
       }
       if (info.required) {
         // defaultとrequiredは一緒に指定できないはずだが念の為
-        return error`The ${optArg} cannot be set to both required and default value.`;
+        return error`The ${hyphenate(
+          name,
+        )} cannot be set to both required and default value.`;
       }
     }
     if (info.alone && info.required) {
       // aloneとrequiredは一緒に指定できないはずだが念の為
-      return error`The ${optArg} cannot be both alone and required.`;
+      return error`The ${hyphenate(name)} cannot be both alone and required.`;
     }
-    // ↑ optMapの不備はここから上でerror`～`で投げる
-  // 名前付きオプション(ヘルプ用文字列付き)
-  const options = Object.defineProperty({}, helpString, {
-    // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
-    get: () => makeHelpString(optMap),
-  }) as { [name: string]: string | number | true } & {
+  }
+}
+
+type ParseContext = {
+  /** 名前付きオプション(ヘルプ用文字列付き) */
+  readonly options: Partial<Record<string, string | number | true>> & {
     readonly [helpString]: string;
   };
-  try {
-    // ↓ コマンドラインの不備はここから下でusage`～`で投げる
-    // 無名オプション
-    const unnamedList: string[] = [];
-    // 単独で指定されるはずのオプション
-    let aloneOpt: string | undefined;
-    // 一つ前に指定されたオプション
-    let prevOpt: string | undefined;
-    for (const arg of toIterable(itr)) {
-      if (arg === '--') {
-        if (aloneOpt) {
-          // 単独で指定されるはずなのに他のオプションが指定された
-          return usage`${aloneOpt} must be specified alone.`;
-        }
-        // --以降はすべて無名オプション
-        unnamedList.push(...toIterable(itr));
-        break;
-      }
-      if (!optMapAlias[arg]) {
-        if (arg[0] === '-') {
-          // optMapにないオプションが指定された
-          return usage`unknown options: ${arg}`;
-        }
-        unnamedList.push(arg);
-        continue;
-      }
-      const { name, info } = optMapAlias[arg];
-      if (aloneOpt || (prevOpt && info.alone)) {
-        // 単独で指定されるはずなのに他のオプションが指定された
-        return usage`${aloneOpt || arg} must be specified alone.`;
-      }
-      prevOpt = arg;
-      if (info.alone) {
-        aloneOpt = arg;
-      }
-      switch (info.type) {
-        case 'boolean':
-          options[name] = true;
-          continue;
-        case 'number': {
-          const r = itr.next();
-          if (r.done) {
-            return usage`${arg} needs a number parameter as the ${example(
-              info,
-            )}`;
-          }
-          const value = +r.value;
-          if (!isFinite(value)) {
-            return usage`${arg} needs a number parameter as the ${example(
-              info,
-            )}: ${r.value}`;
-          }
-          if (info.constraints) {
-            if (Array.isArray(info.constraints)) {
-              if (!info.constraints.includes(value)) {
-                return usage`${arg} must be one of ${info.constraints.join(
-                  ', ',
-                )}.`;
-              }
-            } else {
-              if (value < (info.constraints.min ?? -Infinity)) {
-                return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
-              }
-              if (value > (info.constraints.max ?? Infinity)) {
-                return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
-              }
-            }
-          }
-          options[name] = value;
-          continue;
-        }
-        case undefined:
-        case 'string': {
-          const r = itr.next();
-          if (r.done) {
-            return usage`${arg} needs a parameter as the ${example(info)}`;
-          }
-          if (info.constraints) {
-            const [constraints, findValue] = info.ignoreCase
-              ? [
-                  info.constraints.map(s => s.toUpperCase()),
-                  r.value.toUpperCase(),
-                ]
-              : [info.constraints, r.value];
-            const index = constraints.indexOf(findValue);
-            if (index < 0) {
-              return usage`${arg} must be one of ${info.constraints.join(
-                ', ',
-              )}.`;
-            }
-            if (info.ignoreCase) {
-              r.value = info.constraints[index];
-            }
-          }
-          options[name] = r.value;
-          continue;
-        }
-      }
+  /** エイリアスを含めたオプションの詳細マップ */
+  readonly optMapAlias: Record<
+    string,
+    {
+      readonly name: string;
+      readonly info: Readonly<OptionInformation>;
     }
-    // 単独オプションが指定されていなかったらデフォルト値の設定を行う
-    if (!aloneOpt) {
-      for (const [name, info] of Object.entries(optMap)) {
-        // 指定されていればスキップ
-        if (name in options) {
-          continue;
-        }
-        // requiredなのに指定されていなかったらエラー
-        if (info.required) {
-          return usage`${hyphenate(name)} required`;
-        }
-        // デフォルト値が指定されていたら設定
-        if (info.default !== undefined) {
-          options[name] = info.default;
-        }
-      }
-      const optUnnamed = optMap[unnamed];
-      if (optUnnamed) {
-        const { min = NaN, max = NaN } = optUnnamed;
-        if (unnamedList.length < min) {
-          return usage`At least ${min} ${example(
-            optUnnamed,
-            'unnamed_parameters',
-          )} required.`;
-        }
-        if (unnamedList.length > max) {
-          return usage`Too many ${example(
-            optUnnamed,
-            'unnamed_parameters',
-          )} specified(up to ${max}).`;
-        }
-      }
-      // 無名オプションを追加
-      Object.defineProperty(options, unnamed, {
-        value: Object.freeze(unnamedList),
-        enumerable: true,
-      });
-    } else if (unnamedList.length > 0) {
+  >;
+  /** 無名オプション */
+  readonly unnamedList: string[];
+  /** 単独で指定されるはずのオプション */
+  aloneOpt?: string;
+  /** 一つ前に指定されたオプション */
+  prevOpt?: string;
+};
+
+function initParseContext<OptMap extends OptionInformationMap>(
+  optMap: OptMap,
+): ParseContext {
+  return {
+    /** 名前付きオプション(ヘルプ用文字列付き) */
+    options: Object.defineProperty({}, helpString, {
+      // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
+      get: () => makeHelpString(optMap),
+    }) as ParseContext['options'],
+    // エイリアスを含めたオプションの詳細マップ
+    optMapAlias: expandAlias<OptMap>(optMap),
+    /** 無名オプション */
+    unnamedList: [],
+  };
+}
+
+/**
+ * aliasを含めたオプションの詳細マップを構築する。
+ *
+ * @template OptMap
+ * @param {OptMap} optMap
+ * @returns
+ */
+function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
+  return Object.fromEntries(
+    Object.entries(optMap)
+      .map(([name, info]) => [
+        [hyphenate(name), { name, info }] as const,
+        ...(!info.alias
+          ? []
+          : (typeof info.alias === 'string' ? [info.alias] : info.alias).map(
+              alias => [hyphenate(alias), { name, info }] as const,
+            )),
+      ])
+      .flat(),
+  );
+}
+
+/**
+ * オプションを1つ解析する。
+ *
+ * @param {string} arg
+ * @param {Iterator<string, unknown, undefined>} itr
+ * @param {ParseContext} context
+ * @returns {boolean} 次以降のオプション解析を終了する場合はfalseを返す。
+ */
+function parseOption(
+  arg: string,
+  itr: Iterator<string, unknown, undefined>,
+  context: ParseContext,
+): boolean {
+  const { options, optMapAlias, unnamedList, aloneOpt, prevOpt } = context;
+  if (arg === '--') {
+    if (aloneOpt) {
+      // 単独で指定されるはずなのに他のオプションが指定された
       return usage`${aloneOpt} must be specified alone.`;
     }
-    // 変更不可にして返す
-    return Object.freeze(options) as Options<OptMap>;
-  } catch (ex: unknown) {
-    if (
-      optMap[helpString]?.showUsageOnError &&
-      ex instanceof CommandLineParsingError
-    ) {
-      // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-      process.stderr.write(`${ex.message}\n\n${options[helpString]}`);
-      process.exit(1);
-    }
-    throw ex;
+    // --以降はすべて無名オプション
+    unnamedList.push(...toIterable(itr));
+    return false;
   }
+  if (!optMapAlias[arg]) {
+    if (arg[0] === '-') {
+      // optMapにないオプションが指定された
+      return usage`unknown options: ${arg}`;
+    }
+    unnamedList.push(arg);
+    return true;
+  }
+  const { name, info } = optMapAlias[arg];
+  if (aloneOpt || (prevOpt && info.alone)) {
+    // 単独で指定されるはずなのに他のオプションが指定された
+    return usage`${aloneOpt || arg} must be specified alone.`;
+  }
+  context.prevOpt = arg;
+  if (info.alone) {
+    context.aloneOpt = arg;
+  }
+  switch (info.type) {
+    case 'boolean':
+      options[name] = true;
+      return true;
+    case 'number': {
+      const r = itr.next();
+      if (r.done) {
+        return usage`${arg} needs a number parameter as the ${example(info)}`;
+      }
+      const value = +r.value;
+      if (!isFinite(value)) {
+        return usage`${arg} needs a number parameter as the ${example(info)}: ${
+          r.value
+        }`;
+      }
+      if (info.constraints) {
+        if (Array.isArray(info.constraints)) {
+          if (!info.constraints.includes(value)) {
+            return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+          }
+        } else {
+          if (value < (info.constraints.min ?? -Infinity)) {
+            return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
+          }
+          if (value > (info.constraints.max ?? Infinity)) {
+            return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
+          }
+        }
+      }
+      options[name] = value;
+      return true;
+    }
+    case undefined:
+    case 'string': {
+      const r = itr.next();
+      if (r.done) {
+        return usage`${arg} needs a parameter as the ${example(info)}`;
+      }
+      if (info.constraints) {
+        const [constraints, findValue] = info.ignoreCase
+          ? [info.constraints.map(s => s.toUpperCase()), r.value.toUpperCase()]
+          : [info.constraints, r.value];
+        const index = constraints.indexOf(findValue);
+        if (index < 0) {
+          return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+        }
+        if (info.ignoreCase) {
+          r.value = info.constraints[index];
+        }
+      }
+      options[name] = r.value;
+      return true;
+    }
+  }
+}
+
+/**
+ * 解析結果が適切かどうかチェックする。
+ *
+ * @param {ParseContext} context
+ * @param {OptionInformationMap[typeof unnamed]} [optUnnamed]
+ */
+function validateOptions(
+  { optMapAlias, aloneOpt, unnamedList, options }: ParseContext,
+  optUnnamed?: OptionInformationMap[typeof unnamed],
+): void {
+  if (aloneOpt) {
+    if (unnamedList.length > 0) {
+      // 単独オプションが指定されていたら無名オプションがあればエラー
+      return usage`${aloneOpt} must be specified alone.`;
+    }
+    // 単独オプションが指定されていたらデフォルト値の設定を行わない
+    return;
+  }
+  for (const [optArg, { name, info }] of Object.entries(optMapAlias)) {
+    // 指定されていればスキップ
+    if (name in options) {
+      continue;
+    }
+    // requiredなのに指定されていなかったらエラー
+    if (info.required) {
+      return usage`${optArg} required`;
+    }
+    // デフォルト値が指定されていたら設定
+    if (info.default !== undefined) {
+      options[name] = info.default;
+    }
+  }
+  if (optUnnamed) {
+    const { min, max } = optUnnamed;
+    if (min !== undefined && unnamedList.length < min) {
+      return usage`At least ${min} ${example(
+        optUnnamed,
+        'unnamed_parameters',
+      )} required.`;
+    }
+    if (max !== undefined && unnamedList.length > max) {
+      return usage`Too many ${example(
+        optUnnamed,
+        'unnamed_parameters',
+      )} specified(up to ${max}).`;
+    }
+  }
+  // 無名オプションを追加
+  Object.defineProperty(options, unnamed, {
+    value: Object.freeze(unnamedList),
+    enumerable: true,
+  });
 }
 
 /**
@@ -721,6 +753,49 @@ function loadPackageJson() {
   // package.jsonが見つからなければエラー
   // istanbul ignore next module.parent.pathsから遡って見つからないことはあり得ないのでcoverage対象から除外
   return error`package.json not found`;
+}
+
+/**
+ * ヘルプ文字列のインデントを調整する。
+ *
+ * @param {(string | undefined)} text
+ * @param {string} indent
+ * @returns {string}
+ */
+function indent(text: string | undefined, indent: string): string[] {
+  // undefinedもしくは空白以外の文字が見つからなかったら空文字列を返す
+  if (!text || !/\S/.test(text)) {
+    return [];
+  }
+  // 先頭、末尾の空白行を除去、行末の空白を除去しつつ一行ごとに分割
+  const [first, ...rest] = text
+    .replace(/^(?:[ \t]*[\r\n]+)+|(?:[\r\n]+[ \t]*)+$/g, '')
+    .replace(/^[ \t]+$/, '')
+    .split(/[ \t]*\r?\n/);
+  // 行頭の空白で共通のものを抽出
+  let srcIndent = 0;
+  for (
+    let ch: string;
+    // 最初の行がまだ続いていて
+    srcIndent < first.length &&
+    // 空白文字が続いていて
+    ((ch = first.charAt(srcIndent)) === ' ' || ch === '\t') &&
+    // 他の行にも同じ位置に同じ文字があれば
+    rest.every(
+      line => srcIndent < line.length && line.charAt(srcIndent) === ch,
+    );
+    // 継続
+    ++srcIndent
+  );
+  // 終わればそこまでを共通の空白文字とする。
+  // 共通の空白文字がなければsrcIndentは0
+
+  // 各行頭に共通の空白文字があれば、共通部分だけを指定されたインデントと置き換え
+  // なければ、行頭の空白文字すべてを指定されたインデントと置き換える
+  const trim: (line: string) => string = srcIndent
+    ? line => line.slice(srcIndent)
+    : line => line.replace(/^[ \t]*/, '');
+  return [first, ...rest].map(line => `${indent}${trim(line)}`);
 }
 
 /**
@@ -810,44 +885,60 @@ function makeHelpString<OptMap extends OptionInformationMap>(
 }
 
 /**
- * ヘルプ文字列のインデントを調整する。
+ * CommandLineParsingErrorを受け取った場合はヘルプを表示して終了
  *
- * @param {(string | undefined)} text
- * @param {string} indent
- * @returns {string}
+ * @param {unknown} ex
+ * @param {{ readonly [helpString]: string }} options
  */
-function indent(text: string | undefined, indent: string): string[] {
-  // undefinedもしくは空白以外の文字が見つからなかったら空文字列を返す
-  if (!text || !/\S/.test(text)) {
-    return [];
+function showUsageOnCommandLineParsingError(
+  ex: unknown,
+  options: { readonly [helpString]: string },
+) {
+  if (ex instanceof CommandLineParsingError) {
+    // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
+    process.stderr.write(`${ex.message}\n\n${options[helpString]}`);
+    process.exit(1);
   }
-  // 先頭、末尾の空白行を除去、行末の空白を除去しつつ一行ごとに分割
-  const [first, ...rest] = text
-    .replace(/^(?:[ \t]*[\r\n]+)+|(?:[\r\n]+[ \t]*)+$/g, '')
-    .replace(/^[ \t]+$/, '')
-    .split(/[ \t]*\r?\n/);
-  // 行頭の空白で共通のものを抽出
-  let srcIndent = 0;
-  for (
-    let ch: string;
-    // 最初の行がまだ続いていて
-    srcIndent < first.length &&
-    // 空白文字が続いていて
-    ((ch = first.charAt(srcIndent)) === ' ' || ch === '\t') &&
-    // 他の行にも同じ位置に同じ文字があれば
-    rest.every(
-      line => srcIndent < line.length && line.charAt(srcIndent) === ch,
-    );
-    // 継続
-    ++srcIndent
-  );
-  // 終わればそこまでを共通の空白文字とする。
-  // 共通の空白文字がなければsrcIndentは0
+}
 
-  // 各行頭に共通の空白文字があれば、共通部分だけを指定されたインデントと置き換え
-  // なければ、行頭の空白文字すべてを指定されたインデントと置き換える
-  const trim: (line: string) => string = srcIndent
-    ? line => line.slice(srcIndent)
-    : line => line.replace(/^[ \t]*/, '');
-  return [first, ...rest].map(line => `${indent}${trim(line)}`);
+/**
+ * コマンドラインをoptMapにしたがって解析する。
+ *
+ * @param optMap 解析するための情報。
+ * @param args 解析するコマンドライン。
+ * 省略時はprocess.argvの3つめから開始する。
+ * @throws argsに問題がある場合には{@link CommandLineParsingError}を投げる。
+ */
+export function parse<OptMap extends OptionInformationMap>(
+  optMap: OptMap,
+  args?: Iterable<string>,
+): Options<OptMap> {
+  // optMapの内容チェック
+  assertValidOptMap(optMap);
+  const context: ParseContext = initParseContext<OptMap>(optMap);
+  const itr =
+    args?.[Symbol.iterator]() ??
+    (() => {
+      // argsが省略されたらprocess.argvの３つ目から始める
+      const itr = process.argv[Symbol.iterator]();
+      //２つスキップ
+      itr.next();
+      itr.next();
+      return itr;
+    })();
+  try {
+    for (const arg of toIterable(itr)) {
+      if (!parseOption(arg, itr, context)) {
+        break;
+      }
+    }
+    validateOptions(context, optMap[unnamed]);
+  } catch (ex: unknown) {
+    if (optMap[helpString]?.showUsageOnError) {
+      showUsageOnCommandLineParsingError(ex, context.options);
+    }
+    throw ex;
+  }
+  // 変更不可にして返す
+  return Object.freeze(context.options) as Options<OptMap>;
 }
