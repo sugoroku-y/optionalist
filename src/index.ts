@@ -367,12 +367,12 @@ function toIterable<T>(itr: Iterator<T>): Iterable<T> {
 }
 
 /**
- * 使い方を表示して終わるときに投げられる例外
+ * コマンドラインに不備があるときに投げられる例外
  */
-class Usage extends Error {
+class CommandLineParsingError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'USAGE';
+    this.name = 'CommandLineParsingError';
   }
 }
 
@@ -382,7 +382,9 @@ class Usage extends Error {
  * @param args
  */
 function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
-  throw new Usage(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
+  throw new CommandLineParsingError(
+    args[0].reduce((r, e, i) => `${r}${args[i]}${e}`),
+  );
 }
 
 /**
@@ -680,7 +682,10 @@ export function parse<OptMap extends OptionInformationMap>(
     // 変更不可にして返す
     return Object.freeze(options) as Options<OptMap>;
   } catch (ex: unknown) {
-    if (optMap[helpString]?.showUsageOnError && ex instanceof Usage) {
+    if (
+      optMap[helpString]?.showUsageOnError &&
+      ex instanceof CommandLineParsingError
+    ) {
       // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
       process.stderr.write(`${ex.message}\n\n${options[helpString]}`);
       process.exit(1);
