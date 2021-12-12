@@ -517,7 +517,18 @@ export function parse<OptMap extends OptionInformationMap>(
           default:
             return error`The default value of the ${optArg} parameter cannot be specified.: ${defaultValue}`;
         }
+      if (info.alone) {
+        // defaultとaloneは一緒に指定できないはずだが念の為
+        return error`The ${optArg} cannot be set to both alone and default value.`;
       }
+      if (info.required) {
+        // defaultとrequiredは一緒に指定できないはずだが念の為
+        return error`The ${optArg} cannot be set to both required and default value.`;
+      }
+    }
+    if (info.alone && info.required) {
+      // aloneとrequiredは一緒に指定できないはずだが念の為
+      return error`The ${optArg} cannot be both alone and required.`;
     }
     // ↑ optMapの不備はここから上でerror`～`で投げる
   // 名前付きオプション(ヘルプ用文字列付き)
