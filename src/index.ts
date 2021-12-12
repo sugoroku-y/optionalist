@@ -396,17 +396,11 @@ function error(...args: [TemplateStringsArray, ...unknown[]]): never {
   throw new TypeError(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
 }
 
-/**
- * 数値の配列かどうかを判別する。
- *
- * @param {readonly number[] | { min?: number; max?: number }} o
- * @returns {o is readonly number[]}
- */
-function isNumberArray(
-  o: readonly number[] | Readonly<{ min?: number; max?: number }>,
-): o is readonly number[] {
-  // oは型が限定されているので配列かどうかの判定だけでよい
-  return Array.isArray(o);
+declare global {
+  interface ArrayConstructor {
+    // 標準のArray.isArrayの宣言では、ReadonlyArrayに対して型ガードが有効にならないので宣言を追加
+    isArray(o: unknown): o is readonly unknown[];
+  }
 }
 
 /**
@@ -593,7 +587,7 @@ export function parse<OptMap extends OptionInformationMap>(
             )}: ${r.value}`;
           }
           if (info.constraints) {
-            if (isNumberArray(info.constraints)) {
+            if (Array.isArray(info.constraints)) {
               if (!info.constraints.includes(value)) {
                 return usage`${arg} must be one of ${info.constraints.join(
                   ', ',
