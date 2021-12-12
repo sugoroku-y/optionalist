@@ -484,20 +484,37 @@ type Equal<A, B> = (<T>(a: A) => T extends A ? 1 : 2) extends <T>(
   ? true
   : false;
 
-/**
- * 引数に指定したインスタンスの型がSに一致するかどうかをチェックする。
- *
- * 一致しない場合はコンパイルエラーになる。
- *
- * 実態はないので実際には実行してはいけない。
- */
-declare function TypeOf<T>(a: T): {
-  isExpectedToBe<S>(
-    ...args: Equal<S, T> extends true ? [] : ['型が一致しません']
-  ): void;
-};
+expect.extend({
+  toBeType: function (this: jest.MatcherContext): jest.CustomMatcherResult {
+    if (this.isNot) {
+      throw new Error('.not.toBeType is unsupported');
+    }
+    return { pass: true, message: () => '' };
+  },
+});
 
-() => {
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace jest {
+    interface Matchers<R, T> {
+      /**
+       *
+       */
+      toBeType<S>(
+        ...args: Equal<S, T> extends true ? [] : ['型が一致していません', never]
+      ): R;
+    }
+  }
+}
+
+function assertUndefined(o: unknown): asserts o is undefined {
+  expect(o).toBeUndefined();
+}
+function assertNotUndefined<T>(o: T): asserts o is Exclude<T, undefined> {
+  expect(o).not.toBeUndefined();
+}
+
+describe('type check Options', () => {
   // コンパイルエラーのチェック
   /**
    * | name  | type      | nature   | optional |
@@ -519,7 +536,7 @@ declare function TypeOf<T>(a: T): {
    *
    * ※ booleanにはrequired/defaultを指定できない
    */
-  const options = parse({
+  const optMap = {
     aaa: {},
     bbb: { required: true },
     ccc: { default: 'abc' },
@@ -534,16 +551,18 @@ declare function TypeOf<T>(a: T): {
     lll: { type: 'string', required: true },
     mmm: { type: 'string', default: 'abc' },
     nnn: { type: 'string', alone: true },
-  });
-  options.ccc ? options : options.ddd !== undefined ? options : options;
-  // それぞれの型チェック
-  if (options.ddd !== undefined) {
-    // dddが有効な場合はdddとhelpStringだけ使える
-    TypeOf(options).isExpectedToBe<{
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
+  } as const;
+  test('alone (string)', () => {
+    const options = parse(optMap, ['--ddd', 'ddd']);
+    assertNotUndefined(options.ddd);
+    expect(options).toBeType<{
+      // dddが有効な場合はdddとhelpStringだけ使える
       readonly ddd: string;
+      readonly [helpString]: string;
+      // その他のオプションは使えない
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
       readonly eee?: never;
       readonly fff?: never;
       readonly ggg?: never;
@@ -555,31 +574,16 @@ declare function TypeOf<T>(a: T): {
       readonly mmm?: never;
       readonly nnn?: never;
       readonly [unnamed]?: never;
-      readonly [helpString]: string;
     }>();
-  } else if (options.hhh !== undefined) {
-    // hhhが有効な場合はhhhとhelpStringだけ使える
-    TypeOf(options).isExpectedToBe<{
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
-      readonly ddd?: never;
-      readonly eee?: never;
-      readonly fff?: never;
-      readonly ggg?: never;
+  });
+  test('alone number', () => {
+    const options = parse(optMap, ['--hhh', '0']);
+    assertNotUndefined(options.hhh);
+    expect(options).toBeType<{
+      // hhhが有効な場合はhhhとhelpStringだけ使える
       readonly hhh: number;
-      readonly iii?: never;
-      readonly jjj?: never;
-      readonly kkk?: never;
-      readonly lll?: never;
-      readonly mmm?: never;
-      readonly nnn?: never;
-      readonly [unnamed]?: never;
       readonly [helpString]: string;
-    }>();
-  } else if (options.jjj) {
-    // jjjが有効な場合はjjjとhelpStringだけ使える
-    TypeOf(options).isExpectedToBe<{
+      // その他のオプションは使えない
       readonly aaa?: never;
       readonly bbb?: never;
       readonly ccc?: never;
@@ -587,19 +591,46 @@ declare function TypeOf<T>(a: T): {
       readonly eee?: never;
       readonly fff?: never;
       readonly ggg?: never;
-      readonly hhh?: never;
       readonly iii?: never;
+      readonly jjj?: never;
+      readonly kkk?: never;
+      readonly lll?: never;
+      readonly mmm?: never;
+      readonly nnn?: never;
+      readonly [unnamed]?: never;
+    }>();
+  });
+  test('alone boolean', () => {
+    const options = parse(optMap, ['--jjj']);
+    assertNotUndefined(options.jjj);
+    expect(options).toBeType<{
+      // jjjが有効な場合はjjjとhelpStringだけ使える
       readonly jjj: true;
+      readonly [helpString]: string;
+      // その他のオプションは使えない
+      readonly aaa?: never;
+      readonly bbb?: never;
+      readonly ccc?: never;
+      readonly ddd?: never;
+      readonly eee?: never;
+      readonly fff?: never;
+      readonly ggg?: never;
+      readonly hhh?: never;
+      readonly iii?: never;
       readonly kkk?: never;
       readonly lll?: never;
       readonly mmm?: never;
       readonly nnn?: never;
       readonly [unnamed]?: never;
-      readonly [helpString]: string;
     }>();
-  } else if (options.nnn !== undefined) {
-    // nnnが有効な場合はnnnとhelpStringだけ使える
-    TypeOf(options).isExpectedToBe<{
+  });
+  test('alone string', () => {
+    const options = parse(optMap, ['--nnn', 'nnn']);
+    assertNotUndefined(options.nnn);
+    expect(options).toBeType<{
+      // nnnが有効な場合はnnnとhelpStringだけ使える
+      readonly nnn: string;
+      readonly [helpString]: string;
       readonly aaa?: never;
       readonly bbb?: never;
       readonly ccc?: never;
@@ -613,50 +644,97 @@ declare function TypeOf<T>(a: T): {
       readonly kkk?: never;
       readonly lll?: never;
       readonly mmm?: never;
-      readonly nnn: string;
       readonly [unnamed]?: never;
-      readonly [helpString]: string;
     }>();
-  } else {
-    // aloneなオプションがどれも指定されていないときはaloneでないオプションすべてが使える。aloneなオプションはどれも使えない
-    TypeOf(options).isExpectedToBe<{
+  });
+  test('not alone', () => {
+    const options = parse(optMap, [
+      '--bbb',
+      'bbb',
+      '--fff',
+      '1',
+      '--lll',
+      'lll',
+    ]);
+    // aloneなオプションがどれも指定されていないとき
+    assertUndefined(options.ddd);
+    assertUndefined(options.hhh);
+    assertUndefined(options.jjj);
+    assertUndefined(options.nnn);
+    expect(options).toBeType<{
+      // aloneなオプションはどれも使えない。
+      readonly ddd?: never;
+      readonly hhh?: never;
+      readonly jjj?: never;
+      readonly nnn?: never;
+      // aloneでないオプションすべてが使える。
       readonly aaa?: string;
       readonly bbb: string;
       readonly ccc: string;
-      readonly ddd?: never;
       readonly eee?: number;
       readonly fff: number;
       readonly ggg: number;
-      readonly hhh?: never;
       readonly iii?: true;
-      readonly jjj?: never;
       readonly kkk?: string;
       readonly lll: string;
       readonly mmm: string;
-      readonly nnn?: never;
       readonly [unnamed]: readonly string[];
+      // helpStringももちろん使える。
       readonly [helpString]: string;
     }>();
-  }
-};
-() => {
-  // 組み合わせエラーチェック
-  parse({
-    // @ts-expect-error booleanにはrequiredを指定できない
-    aaa: { type: 'boolean', required: true },
-    // @ts-expect-error booleanにはdefaultを指定できない
-    bbb: { type: 'boolean', default: 'true' },
-    // @ts-expect-error aloneとrequiredは同じオプションに指定できない
-    ccc: { alone: true, required: true },
-    // @ts-expect-error aloneとrequiredは同じオプションに指定できない
-    ddd: { type: 'number', alone: true, required: true },
-    // @ts-expect-error aloneとdefaultは同じオプションに指定できない
-    eee: { alone: true, default: 'true' },
-    // @ts-expect-error aloneとdefaultは同じオプションに指定できない
-    fff: { type: 'number', alone: true, default: 1 },
-    // @ts-expect-error requiredとdefaultは同じオプションに指定できない
-    ggg: { required: true, default: 'true' },
-    // @ts-expect-error requiredとdefaultは同じオプションに指定できない
-    hhh: { type: 'number', required: true, default: 1 },
   });
-};
+});
+
+describe('combination error', () => {
+  // 組み合わせエラーチェック
+  test('boolean required', () => {
+    expect(() =>
+      // @ts-expect-error booleanにはrequiredを指定できない
+      parse({ aaa: { type: 'boolean', required: true } }),
+    ).toThrow('The --aaa cannot set to be required.');
+  });
+  test('boolean default', () => {
+    expect(() =>
+      // @ts-expect-error booleanにはdefaultを指定できない
+      parse({ bbb: { type: 'boolean', default: 'true' } }),
+    ).toThrow(
+      'The default value of the --bbb parameter cannot be specified.: true',
+    );
+  });
+  test('alone required (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+      parse({ ccc: { alone: true, required: true } }),
+    ).toThrow('The --ccc cannot be both alone and required.');
+  });
+  test('alone required number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+      parse({ ddd: { type: 'number', alone: true, required: true } }),
+    ).toThrow('The --ddd cannot be both alone and required.');
+  });
+  test('alone default (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+      parse({ eee: { alone: true, default: 'true' } }),
+    ).toThrow('The --eee cannot be set to both alone and default value.');
+  });
+  test('alone default number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+      parse({ fff: { type: 'number', alone: true, default: 1 } }),
+    ).toThrow('The --fff cannot be set to both alone and default value.');
+  });
+  test('required default (string)', () => {
+    expect(() =>
+      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+      parse({ ggg: { required: true, default: 'true' } }),
+    ).toThrow('The --ggg cannot be set to both required and default value.');
+  });
+  test('required default number', () => {
+    expect(() =>
+      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+      parse({ hhh: { type: 'number', required: true, default: 1 } }),
+    ).toThrow('The --hhh cannot be set to both required and default value.');
+  });
+});
