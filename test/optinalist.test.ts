@@ -1,3 +1,4 @@
+import { assertToBeDefined, assertToBeUndefined } from 'jest-asserts';
 import { parse, unnamed, helpString } from '../src';
 import './toExitProcess';
 import { name as packageName, version } from './package.json';
@@ -507,13 +508,6 @@ declare global {
   }
 }
 
-function assertUndefined(o: unknown): asserts o is undefined {
-  expect(o).toBeUndefined();
-}
-function assertNotUndefined<T>(o: T): asserts o is Exclude<T, undefined> {
-  expect(o).not.toBeUndefined();
-}
-
 describe('type check Options', () => {
   // コンパイルエラーのチェック
   /**
@@ -554,7 +548,7 @@ describe('type check Options', () => {
   } as const;
   test('alone (string)', () => {
     const options = parse(optMap, ['--ddd', 'ddd']);
-    assertNotUndefined(options.ddd);
+    assertToBeDefined(options.ddd);
     expect(options).toBeType<{
       // dddが有効な場合はdddとhelpStringだけ使える
       readonly ddd: string;
@@ -578,7 +572,7 @@ describe('type check Options', () => {
   });
   test('alone number', () => {
     const options = parse(optMap, ['--hhh', '0']);
-    assertNotUndefined(options.hhh);
+    assertToBeDefined(options.hhh);
     expect(options).toBeType<{
       // hhhが有効な場合はhhhとhelpStringだけ使える
       readonly hhh: number;
@@ -602,7 +596,7 @@ describe('type check Options', () => {
   });
   test('alone boolean', () => {
     const options = parse(optMap, ['--jjj']);
-    assertNotUndefined(options.jjj);
+    assertToBeDefined(options.jjj);
     expect(options).toBeType<{
       // jjjが有効な場合はjjjとhelpStringだけ使える
       readonly jjj: true;
@@ -626,7 +620,7 @@ describe('type check Options', () => {
   });
   test('alone string', () => {
     const options = parse(optMap, ['--nnn', 'nnn']);
-    assertNotUndefined(options.nnn);
+    assertToBeDefined(options.nnn);
     expect(options).toBeType<{
       // nnnが有効な場合はnnnとhelpStringだけ使える
       readonly nnn: string;
@@ -657,10 +651,10 @@ describe('type check Options', () => {
       'lll',
     ]);
     // aloneなオプションがどれも指定されていないとき
-    assertUndefined(options.ddd);
-    assertUndefined(options.hhh);
-    assertUndefined(options.jjj);
-    assertUndefined(options.nnn);
+    assertToBeUndefined(options.ddd);
+    assertToBeUndefined(options.hhh);
+    assertToBeUndefined(options.jjj);
+    assertToBeUndefined(options.nnn);
     expect(options).toBeType<{
       // aloneなオプションはどれも使えない。
       readonly ddd?: never;
