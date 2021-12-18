@@ -1,6 +1,6 @@
 import { assertToBeDefined, assertToBeUndefined } from 'jest-asserts';
 import { parse, unnamed, helpString } from '../src';
-import './toExitProcess';
+import 'jest-to-exit-process';
 import { name as packageName, version } from './package.json';
 
 const OPTMAP = {

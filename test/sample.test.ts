@@ -11,11 +11,29 @@ function templateLiteral(
     : args[0].reduce((r, e, i) => `${r}${args[i]}${e}`);
 }
 
+class CommandStream {
+  #data?: Buffer;
+  #str?: string;
+
+  toString(): string {
+    try {
+      return (this.#str ??= this.#data?.toString('utf8') ?? '');
+    } finally {
+      this.#data = undefined;
+    }
+  }
+
+  add(chunk: Buffer): void {
+    this.#data = this.#data ? Buffer.concat([this.#data, chunk]) : chunk;
+  }
+  clear(): void {
+    this.#data = undefined;
+    this.#str = undefined;
+  }
+}
 class CommandPrompt {
-  private stdio: { out: { data?: Buffer }; err: { data?: Buffer } } = {
-    out: {},
-    err: {},
-  };
+  #out = new CommandStream();
+  #err = new CommandStream();
   #cwd = process.cwd();
   readonly env = Object.create(process.env) as typeof process.env;
 
@@ -25,18 +43,18 @@ class CommandPrompt {
   }
 
   get stdout(): string {
-    return this.stdio.out.data?.toString('utf8') ?? '';
+    return this.#out.toString();
   }
 
   get stderr(): string {
-    return this.stdio.err.data?.toString('utf8') ?? '';
+    return this.#err.toString();
   }
 
   exec(...args: [string] | [TemplateStringsArray, ...unknown[]]) {
     const commandline = templateLiteral(...args);
     process.stdout.write(`exec: ${commandline}\n`);
-    this.stdio.out = {};
-    this.stdio.err = {};
+    this.#out.clear();
+    this.#err.clear();
     const [command, ...parameters] = [
       ...commandline.matchAll(/(?:"[^"]*(?:\\.[^"]*)*"|\S+)+/g),
     ].map(match =>
@@ -51,12 +69,8 @@ class CommandPrompt {
         cwd: this.#cwd,
         env: this.env,
       });
-      proc.stdout.on('data', (chunk: Buffer) =>
-        concatChunk(this.stdio.out, chunk),
-      );
-      proc.stderr.on('data', (chunk: Buffer) =>
-        concatChunk(this.stdio.err, chunk),
-      );
+      proc.stdout.on('data', (chunk: Buffer) => this.#out.add(chunk));
+      proc.stderr.on('data', (chunk: Buffer) => this.#err.add(chunk));
       proc
         .on('close', code => {
           if (code === 0) {
