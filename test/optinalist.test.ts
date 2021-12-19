@@ -1,6 +1,7 @@
 import { assertToBeDefined, assertToBeUndefined } from 'jest-asserts';
-import { parse, unnamed, helpString } from '../src';
 import 'jest-to-exit-process';
+import 'jest-to-equal-type';
+import { parse, unnamed, helpString } from '../src';
 import { name as packageName, version } from './package.json';
 
 const OPTMAP = {
@@ -476,38 +477,6 @@ test('max only', () => {
   ).toEqual({ a: 10, [unnamed]: [] });
 });
 
-/**
- * AとBが型として一致するかどうかを判定する。
- */
-type Equal<A, B> = (<T>(a: A) => T extends A ? 1 : 2) extends <T>(
-  a: B,
-) => T extends B ? 1 : 2
-  ? true
-  : false;
-
-expect.extend({
-  toBeType: function (this: jest.MatcherContext): jest.CustomMatcherResult {
-    if (this.isNot) {
-      throw new Error('.not.toBeType is unsupported');
-    }
-    return { pass: true, message: () => '' };
-  },
-});
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
-    interface Matchers<R, T> {
-      /**
-       *
-       */
-      toBeType<S>(
-        ...args: Equal<S, T> extends true ? [] : ['型が一致していません', never]
-      ): R;
-    }
-  }
-}
-
 describe('type check Options', () => {
   // コンパイルエラーのチェック
   /**
@@ -549,7 +518,7 @@ describe('type check Options', () => {
   test('alone (string)', () => {
     const options = parse(optMap, ['--ddd', 'ddd']);
     assertToBeDefined(options.ddd);
-    expect(options).toBeType<{
+    expect(options).toEqualType<{
       // dddが有効な場合はdddとhelpStringだけ使える
       readonly ddd: string;
       readonly [helpString]: string;
@@ -573,7 +542,7 @@ describe('type check Options', () => {
   test('alone number', () => {
     const options = parse(optMap, ['--hhh', '0']);
     assertToBeDefined(options.hhh);
-    expect(options).toBeType<{
+    expect(options).toEqualType<{
       // hhhが有効な場合はhhhとhelpStringだけ使える
       readonly hhh: number;
       readonly [helpString]: string;
@@ -597,7 +566,7 @@ describe('type check Options', () => {
   test('alone boolean', () => {
     const options = parse(optMap, ['--jjj']);
     assertToBeDefined(options.jjj);
-    expect(options).toBeType<{
+    expect(options).toEqualType<{
       // jjjが有効な場合はjjjとhelpStringだけ使える
       readonly jjj: true;
       readonly [helpString]: string;
@@ -621,7 +590,7 @@ describe('type check Options', () => {
   test('alone string', () => {
     const options = parse(optMap, ['--nnn', 'nnn']);
     assertToBeDefined(options.nnn);
-    expect(options).toBeType<{
+    expect(options).toEqualType<{
       // nnnが有効な場合はnnnとhelpStringだけ使える
       readonly nnn: string;
       readonly [helpString]: string;
@@ -655,7 +624,7 @@ describe('type check Options', () => {
     assertToBeUndefined(options.hhh);
     assertToBeUndefined(options.jjj);
     assertToBeUndefined(options.nnn);
-    expect(options).toBeType<{
+    expect(options).toEqualType<{
       // aloneなオプションはどれも使えない。
       readonly ddd?: never;
       readonly hhh?: never;

@@ -43,6 +43,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "^26.2.2",
     "jest-asserts": "0.0.2",
+    "jest-to-equal-type": "0.0.1",
     "jest-to-exit-process": "0.0.1",
     "jest-to-match-sample-code": "0.0.1",
     "prettier": "^2.5.0",
