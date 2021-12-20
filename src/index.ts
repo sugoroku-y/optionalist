@@ -5,7 +5,7 @@ import { resolve } from 'path';
 function hasProperty<NAME extends string | number | symbol>(
   o: unknown,
   name: NAME,
-): o is { [N in NAME]: unknown } {
+): o is Record<NAME, unknown> {
   // istanbul ignore next 同上で除外
   return typeof o === 'object' && o !== null && name in o;
 }
@@ -29,9 +29,7 @@ function hasProperty<NAME extends string | number | symbol>(
  * }
  * ```
  */
-type Normalize<T> = T extends { [K in never]: never }
-  ? { [K in keyof T]: T[K] }
-  : never;
+type Normalize<T extends Record<never, never>> = { [K in keyof T]: T[K] };
 
 /**
  * |で接続された型を1つのオブジェクト型に結合する。
@@ -70,6 +68,17 @@ type Combination<T> = (
  * ```
  */
 type Values<T extends object> = T[keyof T];
+
+/** すべてのプロパティにアクセス可能な状態で、存在していない状態にする */
+type OmitAsExisting<T> = Partial<Record<keyof T, never>>;
+
+/** それぞれのプロパティが1つだけ存在している、もしくは1つも存在していない状態にする。 */
+type Exclusive<T> =
+  | {
+      [N in keyof T]: Record<N, T[N]> &
+        Partial<Record<Exclude<keyof T, N>, never>>;
+    }[keyof T]
+  | OmitAsExisting<T>;
 
 /**
  * 各オプションの説明文を取得するためのシンボル。
@@ -110,108 +119,142 @@ type OptionBase<T extends string | number | boolean> = (T extends boolean
   example?: string;
   /**
    * aloneにtrueを指定すると、単独で指定するオプションとなる。
+   *
+   * required、default、multipleとは同時に指定できない。
    */
   alone?: true;
   /**
    * requiredにtrueを指定すると、必須オプションとなる。
+   *
+   * alone、default、multipleとは同時に指定できない。
    */
   required?: true;
   /**
    * defaultに値を指定すると、省略時にその値が設定される。
+   *
+   * alone、required、multipleとは同時に指定できない。
    */
   default?: T extends string | number ? T : never;
-};
-
-/** オプションの特性無し */
-type OptionNonNature = {
-  /** alone指定なし */
-  alone?: never;
-  /** required指定なし */
-  required?: never;
-  /** default指定なし */
-  default?: never;
-};
-
-/** オプションの特性: 単独で指定 */
-type OptionAlone = {
-  alone: true;
   /**
+   * multipleにtrueを指定すると、複数指定できる。
    *
-   * **aloneを指定したときは、 同時にrequiredを指定できない**。
+   * alone、required、defaultとは同時に指定できない。
    */
-  required?: never;
+  multiple?: true;
   /**
-   *
-   * **aloneを指定したときは、同時にdefaultを指定できない。**
+   * 制約。
    */
-  default?: never;
-};
-
-/** オプションの特性: 省略不可 */
-type OptionRequired = {
-  required: true;
-  /**
-   *
-   * **requiredを指定したときは、同時にaloneを指定できない。**
-   */
-  alone?: never;
-  /**
-   *
-   * **requiredを指定したときは、同時にdefaultを指定できない。**
-   */
-  default?: never;
-};
-
-/** オプションの特性: 省略時のデフォルト値あり */
-type OptionDefaultSpecified<T extends string | number> = {
-  default: T;
-  /**
-   *
-   * **defaultを指定したときは、同時にaloneを指定できない。**
-   */
-  alone?: never;
-  /**
-   *
-   * **defaultを指定したときは、同時にrequiredを指定できない。**
-   */
-  required?: never;
+  constraints?: unknown;
 };
 
 /** 文字型/数値型オプションの共通情報 */
 type OptionWithValue<T extends string | number> = OptionBase<T> &
-  (OptionNonNature | OptionAlone | OptionRequired | OptionDefaultSpecified<T>);
+  Exclusive<{
+    multiple: true;
+    alone: true;
+    default: T;
+    required: true;
+  }>;
 
 /** 文字列型のオプション情報 */
-type StringOption = OptionWithValue<string> & {
-  /**
-   * 文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
-   */
-  constraints?: readonly string[];
-  /**
-   * constraintsを指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
-   */
-  ignoreCase?: true;
-};
-/** 数値型のオプション情報 */
-type NumberOption = OptionWithValue<number> & {
-  /**
-   * 数値として指定できる制約。配列の場合は、ここで設定した値以外を指定するとエラーになる。
-   */
-  constraints?:
-    | readonly number[]
+type StringOption = OptionWithValue<string> &
+  (
     | {
         /**
-         * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+         *
+         * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
          */
-        readonly min?: number;
+        constraints: readonly string[];
         /**
-         * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+         * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
          */
-        readonly max?: number;
-      };
-};
+        ignoreCase?: true;
+      }
+    | {
+        /**
+         *
+         * 正規表現の場合は文字列として指定できるパターン。ここで設定したパターンにマッチしない文字列を指定するとエラーとなる。
+         */
+        constraints: RegExp;
+        /**
+         *
+         * constraintsに正規表現を指定した場合は、正規表現のiフラグを使うこと。
+         */
+        ignoreCase?: never;
+      }
+    | {
+        constraints?: never;
+      }
+  );
+/** 数値型のオプション情報 */
+type NumberOption = OptionWithValue<number> &
+  (
+    | {
+        /**
+         *
+         * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
+         */
+        constraints: readonly number[];
+      }
+    | {
+        /**
+         *
+         * 最小値、最大値の指定の場合は、ここで設定した範囲外の数値を指定するとエラーになる。
+         */
+        constraints: Exclude<
+          Exclusive<{
+            /**
+             * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+             */
+            min: number;
+            /**
+             * 数値として指定できる最小値(この値は含まない)。ここで設定した数値以下の数値が指定されるとエラーになる。
+             */
+            minExclusive: number;
+          }> &
+            Exclusive<{
+              /**
+               * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+               */
+              max: number;
+              /**
+               * 数値として指定できる最大値(この値は含まない)。ここで設定した数値以上の数値が指定されるとエラーになる。
+               */
+              maxExclusive: number;
+            }>,
+          // それぞれ省略可能だが、すべて省略された場合はエラーとする
+          Partial<Record<string, never>>
+        >;
+      }
+    | {
+        constraints?: never;
+      }
+  );
 /** 真偽値型のオプション情報 */
-type FlagOption = OptionBase<boolean> & (OptionNonNature | OptionAlone);
+type FlagOption = OptionBase<boolean> &
+  Exclusive<{ alone: true }> &
+  OmitAsExisting<{
+    /**
+     *
+     * booleanには指定できない。
+     */
+    constraints: unknown;
+    /**
+     *
+     * booleanには指定できない。
+     */
+    required: unknown;
+    /**
+     *
+     * booleanには指定できない。
+     */
+    multiple: unknown;
+    /**
+     *
+     * booleanには指定できない。
+     */
+    default: unknown;
+  }>;
 
 /**
  * 各プロパティの詳細情報
@@ -304,6 +347,9 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
             : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
             OPTMAP[N] extends { required: true } | { default: OptType }
             ? { readonly [K in N]: OptType }
+            : // multipleが指定されているものは配列型
+            OPTMAP[N] extends { multiple: true }
+            ? { readonly [K in N]: OptType[] }
             : // それ以外は存在していない可能性のあるプロパティ
               { readonly [K in N]?: OptType }
           : // プロパティキーが文字列以外の場合は除外
@@ -412,8 +458,8 @@ declare global {
  * @param {string} [def='parameter']
  * @returns {string}
  */
-function example(info: { example?: string }, def = 'parameter'): string {
-  return info.example ?? def;
+function example(info: { example?: string }, unnamed?: true): string {
+  return info.example ?? (unnamed ? 'unnamed_parameters' : 'parameter');
 }
 
 /**
@@ -503,17 +549,35 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
           name,
         )} cannot be set to both required and default value.`;
       }
+      if (info.multiple) {
+        // defaultとmultipleは一緒に指定できないはずだが念の為
+        return error`The ${hyphenate(
+          name,
+        )} cannot be set to both multiple and default value.`;
+      }
     }
     if (info.alone && info.required) {
       // aloneとrequiredは一緒に指定できないはずだが念の為
       return error`The ${hyphenate(name)} cannot be both alone and required.`;
+    }
+    if (info.alone && info.multiple) {
+      // aloneとmultipleは一緒に指定できないはずだが念の為
+      return error`The ${hyphenate(name)} cannot be both alone and multiple.`;
+    }
+    if (info.required && info.multiple) {
+      // requiredとmultipleは一緒に指定できないはずだが念の為
+      return error`The ${hyphenate(
+        name,
+      )} cannot be both required and multiple.`;
     }
   }
 }
 
 type ParseContext = {
   /** 名前付きオプション(ヘルプ用文字列付き) */
-  readonly options: Partial<Record<string, string | number | true>> & {
+  readonly options: Partial<
+    Record<string, string | number | true | string[] | number[]>
+  > & {
     readonly [helpString]: string;
   };
   /** エイリアスを含めたオプションの詳細マップ */
@@ -631,15 +695,40 @@ function parseOption(
             return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
           }
         } else {
-          if (value < (info.constraints.min ?? -Infinity)) {
+          if (
+            info.constraints.min !== undefined &&
+            value < info.constraints.min
+          ) {
             return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
           }
-          if (value > (info.constraints.max ?? Infinity)) {
+          if (
+            info.constraints.minExclusive !== undefined &&
+            value <= info.constraints.minExclusive
+          ) {
+            return usage`${arg} must be greater than ${info.constraints.minExclusive}.`;
+          }
+          if (
+            info.constraints.max !== undefined &&
+            value > info.constraints.max
+          ) {
             return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
+          }
+          if (
+            info.constraints.maxExclusive !== undefined &&
+            value >= info.constraints.maxExclusive
+          ) {
+            return usage`${arg} must be less than ${info.constraints.maxExclusive}.`;
           }
         }
       }
-      options[name] = value;
+      if (info.multiple) {
+        ((options[name] ??= []) as number[]).push(value);
+      } else {
+        if (name in options) {
+          return usage`Duplicate ${arg}: ${options[name]}, ${value}`;
+        }
+        options[name] = value;
+      }
       return true;
     }
     case undefined:
@@ -648,19 +737,36 @@ function parseOption(
       if (r.done) {
         return usage`${arg} needs a parameter as the ${example(info)}`;
       }
+      let value = r.value;
       if (info.constraints) {
-        const [constraints, findValue] = info.ignoreCase
-          ? [info.constraints.map(s => s.toUpperCase()), r.value.toUpperCase()]
-          : [info.constraints, r.value];
-        const index = constraints.indexOf(findValue);
-        if (index < 0) {
-          return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
-        }
-        if (info.ignoreCase) {
-          r.value = info.constraints[index];
+        if (info.constraints instanceof RegExp) {
+          if (!info.constraints.test(value)) {
+            return usage`${arg} does not match ${info.constraints}: ${r.value}`;
+          }
+        } else {
+          const [constraints, findValue] = info.ignoreCase
+            ? [
+                info.constraints.map(s => s.toUpperCase()),
+                r.value.toUpperCase(),
+              ]
+            : [info.constraints, r.value];
+          const index = constraints.indexOf(findValue);
+          if (index < 0) {
+            return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+          }
+          if (info.ignoreCase) {
+            value = info.constraints[index];
+          }
         }
       }
-      options[name] = r.value;
+      if (info.multiple) {
+        ((options[name] ??= []) as string[]).push(value);
+      } else {
+        if (name in options) {
+          return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
+        }
+        options[name] = value;
+      }
       return true;
     }
   }
@@ -696,20 +802,23 @@ function validateOptions(
     // デフォルト値が指定されていたら設定
     if (info.default !== undefined) {
       options[name] = info.default;
+      continue;
+    }
+    // 複数指定の場合は指定されていなくても空配列を設定
+    if (info.multiple) {
+      options[name] = [];
+      continue;
     }
   }
   if (optUnnamed) {
     const { min, max } = optUnnamed;
     if (min !== undefined && unnamedList.length < min) {
-      return usage`At least ${min} ${example(
-        optUnnamed,
-        'unnamed_parameters',
-      )} required.`;
+      return usage`At least ${min} ${example(optUnnamed, true)} required.`;
     }
     if (max !== undefined && unnamedList.length > max) {
       return usage`Too many ${example(
         optUnnamed,
-        'unnamed_parameters',
+        true,
       )} specified(up to ${max}).`;
     }
   }
@@ -829,7 +938,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     const line = [...requiredList, ...optionalList.map(o => `[${o}]`)];
     const info = optMap[unnamed];
     if (info) {
-      line.push(`[--] [${example(info, 'unnamed_parameters')}...]`);
+      line.push(`[--] [${example(info, true)}...]`);
     }
     aloneList.unshift(line.join(' '));
   }
@@ -877,7 +986,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const info = optMap[unnamed];
   if (info) {
     help.push(
-      `  [--] [${example(info, 'unnamed_parameters')}...]`,
+      `  [--] [${example(info, true)}...]`,
       ...indent(info.describe, '    '),
     );
   }

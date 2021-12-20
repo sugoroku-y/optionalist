@@ -477,6 +477,97 @@ test('max only', () => {
   ).toEqual({ a: 10, [unnamed]: [] });
 });
 
+test('multiple string', () => {
+  expect(
+    parse({ a: { multiple: true } }, ['-a', 'abc', '-a', 'def', '-a', 'ghi']),
+  ).toEqual({ a: ['abc', 'def', 'ghi'], [unnamed]: [] });
+});
+
+test('multiple number', () => {
+  expect(
+    parse({ a: { type: 'number', multiple: true } }, [
+      '-a',
+      '10',
+      '-a',
+      '20',
+      '-a',
+      '30',
+    ]),
+  ).toEqual({ a: [10, 20, 30], [unnamed]: [] });
+});
+test('duplicate string', () => {
+  expect(() => parse({ a: {} }, ['-a', 'abc', '-a', 'def'])).toThrow(
+    'Duplicate -a: abc, def',
+  );
+});
+
+test('duplicate number', () => {
+  expect(() =>
+    parse({ a: { type: 'number' } }, ['-a', '10', '-a', '20']),
+  ).toThrow('Duplicate -a: 10, 20');
+});
+
+test('invalid optMap', () => {
+  expect(() => parse({ '': {} })).toThrow('empty option name');
+  expect(() => parse({ '-': {} })).toThrow('Invalid option name: -');
+});
+
+test('pattern constraints', () => {
+  expect(() =>
+    parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']),
+  ).toThrow('-a does not match /^\\w+=/: aaabbb');
+});
+
+test('minExclusive', () => {
+  expect(
+    parse({ a: { type: 'number', constraints: { minExclusive: 1 } } }, [
+      '-a',
+      '1.1',
+    ]),
+  ).toEqual({
+    a: 1.1,
+    [unnamed]: [],
+  });
+  expect(() =>
+    parse({ a: { type: 'number', constraints: { minExclusive: 1 } } }, [
+      '-a',
+      '1',
+    ]),
+  ).toThrow('-a must be greater than 1.');
+});
+
+test('maxExclusive', () => {
+  expect(
+    parse({ a: { type: 'number', constraints: { maxExclusive: 10 } } }, [
+      '-a',
+      '9.9',
+    ]),
+  ).toEqual({
+    a: 9.9,
+    [unnamed]: [],
+  });
+  expect(() =>
+    parse({ a: { type: 'number', constraints: { maxExclusive: 10 } } }, [
+      '-a',
+      '10',
+    ]),
+  ).toThrow('-a must be less than 10.');
+});
+test('max&maxExclusive', () => {
+  parse(
+    // @ts-expect-error maxとmaxExclusiveは同時に指定できない
+    { a: { type: 'number', constraints: { max: 11, maxExclusive: 10 } } },
+    [],
+  );
+  parse(
+    // @ts-expect-error minとminExclusiveは同時に指定できない
+    { a: { type: 'number', constraints: { min: 11, minExclusive: 10 } } },
+    [],
+  );
+  // @ts-expect-error min、minExclusive、max、maxExclusiveのどれも指定しないのはエラー
+  parse({ a: { type: 'number', constraints: {} } }, []);
+});
+
 describe('type check Options', () => {
   // コンパイルエラーのチェック
   /**
@@ -496,6 +587,9 @@ describe('type check Options', () => {
    * | lll   | string    | required | false    |
    * | mmm   | string    | default  | false    |
    * | nnn   | string    | alone    | -        |
+   * | ooo   | (string)  | multiple | false    |
+   * | ppp   | number    | multiple | false    |
+   * | qqq   | string    | multiple | false    |
    *
    * ※ booleanにはrequired/defaultを指定できない
    */
@@ -514,6 +608,9 @@ describe('type check Options', () => {
     lll: { type: 'string', required: true },
     mmm: { type: 'string', default: 'abc' },
     nnn: { type: 'string', alone: true },
+    ooo: { multiple: true },
+    ppp: { type: 'number', multiple: true },
+    qqq: { type: 'string', multiple: true },
   } as const;
   test('alone (string)', () => {
     const options = parse(optMap, ['--ddd', 'ddd']);
@@ -536,6 +633,9 @@ describe('type check Options', () => {
       readonly lll?: never;
       readonly mmm?: never;
       readonly nnn?: never;
+      readonly ooo?: never;
+      readonly ppp?: never;
+      readonly qqq?: never;
       readonly [unnamed]?: never;
     }>();
   });
@@ -560,6 +660,9 @@ describe('type check Options', () => {
       readonly lll?: never;
       readonly mmm?: never;
       readonly nnn?: never;
+      readonly ooo?: never;
+      readonly ppp?: never;
+      readonly qqq?: never;
       readonly [unnamed]?: never;
     }>();
   });
@@ -584,6 +687,9 @@ describe('type check Options', () => {
       readonly lll?: never;
       readonly mmm?: never;
       readonly nnn?: never;
+      readonly ooo?: never;
+      readonly ppp?: never;
+      readonly qqq?: never;
       readonly [unnamed]?: never;
     }>();
   });
@@ -607,6 +713,9 @@ describe('type check Options', () => {
       readonly kkk?: never;
       readonly lll?: never;
       readonly mmm?: never;
+      readonly ooo?: never;
+      readonly ppp?: never;
+      readonly qqq?: never;
       readonly [unnamed]?: never;
     }>();
   });
@@ -641,6 +750,9 @@ describe('type check Options', () => {
       readonly kkk?: string;
       readonly lll: string;
       readonly mmm: string;
+      readonly ooo: string[];
+      readonly ppp: number[];
+      readonly qqq: string[];
       readonly [unnamed]: readonly string[];
       // helpStringももちろん使える。
       readonly [helpString]: string;
@@ -699,5 +811,41 @@ describe('combination error', () => {
       // @ts-expect-error requiredとdefaultは同じオプションに指定できない
       parse({ hhh: { type: 'number', required: true, default: 1 } }),
     ).toThrow('The --hhh cannot be set to both required and default value.');
+  });
+  test('alone multiple (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
+      parse({ iii: { alone: true, multiple: true } }),
+    ).toThrow('The --iii cannot be both alone and multiple.');
+  });
+  test('required multiple (string)', () => {
+    expect(() =>
+      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
+      parse({ jjj: { required: true, multiple: true } }),
+    ).toThrow('The --jjj cannot be both required and multiple.');
+  });
+  test('multiple default (string)', () => {
+    expect(() =>
+      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
+      parse({ kkk: { default: '', multiple: true } }),
+    ).toThrow('The --kkk cannot be set to both multiple and default value.');
+  });
+  test('alone multiple number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
+      parse({ lll: { type: 'number', alone: true, multiple: true } }),
+    ).toThrow('The --lll cannot be both alone and multiple.');
+  });
+  test('required multiple number', () => {
+    expect(() =>
+      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
+      parse({ mmm: { type: 'number', required: true, multiple: true } }),
+    ).toThrow('The --mmm cannot be both required and multiple.');
+  });
+  test('multiple default number', () => {
+    expect(() =>
+      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
+      parse({ nnn: { type: 'number', default: 1, multiple: true } }),
+    ).toThrow('The --nnn cannot be set to both multiple and default value.');
   });
 });
