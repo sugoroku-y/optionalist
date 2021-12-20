@@ -25,6 +25,7 @@ class CommandStream {
     this.#str = undefined;
   }
 }
+
 class CommandPrompt {
   #out = new CommandStream();
   #err = new CommandStream();
@@ -73,17 +74,6 @@ class CommandPrompt {
         })
         .on('error', err => reject(err));
     });
-  }
-}
-
-async function unpromise<T>(promise: Promise<T>): Promise<() => T> {
-  try {
-    const r = await promise;
-    return () => r;
-  } catch (e) {
-    return () => {
-      throw e;
-    };
   }
 }
 
@@ -137,7 +127,7 @@ Options:
   });
 
   test('show help, initialize', async () => {
-    expect(await unpromise(prompt.exec`node ./ --help --init`)).toThrow(
+    await expect(prompt.exec`node ./ --help --init`).rejects.toThrow(
       'FAILED(exit code: 1)',
     );
     expect(prompt.stdout).toBe('');
@@ -145,23 +135,21 @@ Options:
   });
 
   test('show help, script_filename', async () => {
-    expect(
-      await unpromise(prompt.exec`node ./ --help script_filename`),
-    ).toThrow('FAILED(exit code: 1)');
+    await expect(prompt.exec`node ./ --help script_filename`).rejects.toThrow(
+      'FAILED(exit code: 1)',
+    );
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`--help must be specified alone.`);
   });
 
   test('no params', async () => {
-    expect(await unpromise(prompt.exec`node ./`)).toThrow(
-      'FAILED(exit code: 1)',
-    );
+    await expect(prompt.exec`node ./`).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`--output required`);
   });
 
   test('no output filename', async () => {
-    expect(await unpromise(prompt.exec`node ./ --output`)).toThrow(
+    await expect(prompt.exec`node ./ --output`).rejects.toThrow(
       'FAILED(exit code: 1)',
     );
     expect(prompt.stdout).toBe('');
@@ -183,9 +171,9 @@ Options:
   });
 
   test('specify output,config without config file', async () => {
-    expect(
-      await unpromise(prompt.exec`node ./ --output output.txt --config`),
-    ).toThrow('FAILED(exit code: 1)');
+    await expect(
+      prompt.exec`node ./ --output output.txt --config`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--config needs a parameter as the config_filename`,
@@ -199,9 +187,9 @@ Options:
   });
 
   test('specify output,timeout without timeout', async () => {
-    expect(
-      await unpromise(prompt.exec`node ./ --output output.txt --timeout`),
-    ).toThrow('FAILED(exit code: 1)');
+    await expect(
+      prompt.exec`node ./ --output output.txt --timeout`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--timeout needs a number parameter as the parameter`,
@@ -209,11 +197,9 @@ Options:
   });
 
   test('specify output,timeout with NaN', async () => {
-    expect(
-      await unpromise(
-        prompt.exec`node ./ --output output.txt --timeout NotANumber`,
-      ),
-    ).toThrow('FAILED(exit code: 1)');
+    await expect(
+      prompt.exec`node ./ --output output.txt --timeout NotANumber`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--timeout needs a number parameter as the parameter: NotANumber`,
@@ -221,7 +207,7 @@ Options:
   });
 
   test('unknown option', async () => {
-    expect(await unpromise(prompt.exec`node ./ --unknown`)).toThrow(
+    await expect(prompt.exec`node ./ --unknown`).rejects.toThrow(
       'FAILED(exit code: 1)',
     );
     expect(prompt.stdout).toBe('');
