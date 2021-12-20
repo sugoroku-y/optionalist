@@ -386,7 +386,7 @@ function stream(
   proc: () => unknown,
 ): string | Promise<string> {
   // 出力バッファ
-  let buffer = Buffer.alloc(0);
+  let buffer = Buffer.of();
   // モック
   const mock = jest.spyOn(stream, 'write').mockImplementation(str => {
     // 書き込みをバッファに溜めていく
