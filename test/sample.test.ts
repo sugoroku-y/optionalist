@@ -62,8 +62,6 @@ class CommandPrompt {
         quoted.slice(1, -1).replace(/\\./g, match => match.slice(1)),
       ),
     );
-    const concatChunk = (stream: { data?: Buffer }, chunk: Buffer) =>
-      (stream.data = stream.data ? Buffer.concat([stream.data, chunk]) : chunk);
     return new Promise<void>((resolve, reject) => {
       const proc = spawn(command, parameters, {
         cwd: this.#cwd,
