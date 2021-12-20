@@ -1,14 +1,8 @@
 import { spawn } from 'child_process';
 import { resolve } from 'path';
 
-function templateLiteral(
-  ...args: [] | [string] | [TemplateStringsArray, ...unknown[]]
-): string {
-  return args[0] === undefined
-    ? ''
-    : typeof args[0] === 'string'
-    ? args[0]
-    : args[0].reduce((r, e, i) => `${r}${args[i]}${e}`);
+function templateLiteral(...a: [TemplateStringsArray, ...unknown[]]): string {
+  return a[0].reduce((r, e, i) => `${r}${a[i]}${e}`);
 }
 
 class CommandStream {
@@ -50,7 +44,7 @@ class CommandPrompt {
     return this.#err.toString();
   }
 
-  exec(...args: [string] | [TemplateStringsArray, ...unknown[]]) {
+  exec(...args: [TemplateStringsArray, ...unknown[]]) {
     const commandline = templateLiteral(...args);
     process.stdout.write(`exec: ${commandline}\n`);
     this.#out.clear();
@@ -95,9 +89,9 @@ async function unpromise<T>(promise: Promise<T>): Promise<() => T> {
 
 describe('sample package test', () => {
   const prompt = new CommandPrompt();
-  const helpString = (
-    ...args: [TemplateStringsArray, ...unknown[]] | [string] | []
-  ) => `${args[0] ? `${templateLiteral(...args)}\n\n` : ''}Version: sample 0.0.1
+  const helpString = (...args: [TemplateStringsArray, ...unknown[]]) => `${
+    args[0].length > 1 || args[0][0] ? `${templateLiteral(...args)}\n\n` : ''
+  }Version: sample 0.0.1
 Usage:
   npx sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
   npx sample --help
@@ -124,15 +118,15 @@ Options:
 
   beforeAll(async () => {
     prompt.cwd = resolve(__dirname, '..');
-    await prompt.exec(`npm run build`);
+    await prompt.exec`npm run build`;
     prompt.cwd = resolve(__dirname, '..', 'sample');
-    await prompt.exec(`npm ci`);
-    await prompt.exec(`npm run build`);
+    await prompt.exec`npm ci`;
+    await prompt.exec`npm run build`;
   }, 30000);
 
   test('show help', async () => {
     await prompt.exec`node ./ --help`;
-    expect(prompt.stdout).toBe(`${helpString()}\n`);
+    expect(prompt.stdout).toBe(`${helpString``}\n`);
     expect(prompt.stderr).toBe('');
   });
 
