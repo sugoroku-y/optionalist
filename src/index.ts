@@ -620,18 +620,18 @@ function initParseContext<OptMap extends OptionInformationMap>(
  * @returns
  */
 function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
-  return Object.fromEntries(
-    Object.entries(optMap)
-      .map(([name, info]) => [
-        [hyphenate(name), { name, info }] as const,
-        ...(!info.alias
-          ? []
-          : (typeof info.alias === 'string' ? [info.alias] : info.alias).map(
-              alias => [hyphenate(alias), { name, info }] as const,
-            )),
-      ])
-      .flat(),
-  );
+  const map: Record<string, { name: string; info: OptionInformation }> = {};
+  for (const [name, info] of Object.entries(optMap)) {
+    const value = { name, info };
+    map[hyphenate(name)] = value;
+    if (!info.alias) {
+      continue;
+    }
+    for (const alias of Array.isArray(info.alias) ? info.alias : [info.alias]) {
+      map[hyphenate(alias)] = value;
+    }
+  }
+  return map;
 }
 
 /**
