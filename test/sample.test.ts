@@ -1,6 +1,8 @@
 import { spawn } from 'child_process';
 import { resolve } from 'path';
 
+const SETTIMEOUT_LIMIT = 0x7fffffff; // max 32-bit signed integer
+
 function templateLiteral(...a: [TemplateStringsArray, ...unknown[]]): string {
   return a[0].reduce((r, e, i) => `${r}${a[i]}${e}`);
 }
@@ -114,7 +116,7 @@ Options:
     prompt.cwd = resolve(__dirname, '..', 'sample');
     await prompt.exec`npm ci`;
     await prompt.exec`npm run build`;
-  }, 30000);
+  }, SETTIMEOUT_LIMIT);
 
   test('show help', async () => {
     await prompt.exec`node ./ --help`;
