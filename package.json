@@ -5,9 +5,10 @@
   "main": "lib/index.js",
   "scripts": {
     "lint": "eslint ./",
-    "prepare": "npm run build",
     "build": "tsc --build src/tsconfig.json",
-    "test": "jest"
+    "pretest": "npm run build",
+    "test": "jest",
+    "prepare": "npm test"
   },
   "repository": {
     "type": "git",
