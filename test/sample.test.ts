@@ -51,12 +51,14 @@ class CommandPrompt {
     this.#out.clear();
     this.#err.clear();
     const [command, ...parameters] = [
-      ...commandline.matchAll(/(?:"[^"]*(?:\\.[^"]*)*"|\S+)+/g),
-    ].map(match =>
-      match[0].replace(/"[^"]*(?:\\.[^"]*)*"/g, quoted =>
-        quoted.slice(1, -1).replace(/\\./g, match => match.slice(1)),
-      ),
-    );
+      ...(function* () {
+        const re = /(?:"([^"]*(?:\\.[^"]*)*)"|\S+)+/g;
+        let match;
+        while ((match = re.exec(commandline)) !== null) {
+          yield match[1]?.replace(/\\(.)/g, '$1') ?? match[0];
+        }
+      })(),
+    ];
     return new Promise<void>((resolve, reject) => {
       const proc = spawn(command, parameters, {
         cwd: this.#cwd,
