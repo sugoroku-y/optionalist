@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: package install
-        run: npm ci
+        run:
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,undefined,2)+'\n','utf8')"
+          npm ci
       - name: test
         run: npm test
