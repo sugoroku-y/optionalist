@@ -8,7 +8,7 @@
     "build": "tsc --build src/tsconfig.json",
     "pretest": "npm run build",
     "test": "jest",
-    "prepare": "npm test"
+    "preversion": "npm test"
   },
   "repository": {
     "type": "git",
