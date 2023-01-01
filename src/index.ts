@@ -1,14 +1,17 @@
 import * as fs from 'fs';
 import { resolve } from 'path';
 
-// istanbul ignore next 例外の型チェックでしか使われていないのでcoverage対象から除外
-function hasProperty<NAME extends string | number | symbol>(
-  o: unknown,
-  name: NAME,
-): o is Record<NAME, unknown> {
-  // istanbul ignore next 同上で除外
-  return typeof o === 'object' && o !== null && name in o;
+declare const description: unique symbol;
+/** 説明つきの型 */
+export type DescribedType<TYPE, OPT> = OPT extends {
+  readonly describe: `${infer DESCRIPTION}`;
 }
+  ? // describeが固定文字列でなければ説明無しの型
+    string extends DESCRIPTION
+    ? TYPE
+    : TYPE & { [description]?: DESCRIPTION }
+  : // describeが指定されていなければ説明無しの型
+    TYPE;
 
 /**
  * &で結合されたオブジェクト型をまとめる。
@@ -51,7 +54,9 @@ type Normalize<T extends Record<never, never>> = { [K in keyof T]: T[K] };
 type Combination<T> = (
   T extends unknown ? (arg: T) => unknown : never
 ) extends (arg: infer C) => unknown
-  ? Normalize<C>
+  ? C extends Record<never, never>
+    ? Normalize<C>
+    : never
   : never;
 
 /**
@@ -75,8 +80,7 @@ type OmitAsExisting<T> = Partial<Record<keyof T, never>>;
 /** それぞれのプロパティが1つだけ存在している、もしくは1つも存在していない状態にする。 */
 type Exclusive<T> =
   | {
-      [N in keyof T]: Record<N, T[N]> &
-        Partial<Record<Exclude<keyof T, N>, never>>;
+      [N in keyof T]: Pick<T, N> & OmitAsExisting<Omit<T, N>>;
     }[keyof T]
   | OmitAsExisting<T>;
 
@@ -230,36 +234,20 @@ type NumberOption = OptionWithValue<number> &
         constraints?: never;
       }
   );
+
 /** 真偽値型のオプション情報 */
-type FlagOption = OptionBase<boolean> &
-  Exclusive<{ alone: true }> &
-  OmitAsExisting<{
-    /**
-     *
-     * booleanには指定できない。
-     */
-    constraints: unknown;
-    /**
-     *
-     * booleanには指定できない。
-     */
-    required: unknown;
-    /**
-     *
-     * booleanには指定できない。
-     */
-    multiple: unknown;
-    /**
-     *
-     * booleanには指定できない。
-     */
-    default: unknown;
-  }>;
+type FlagOption = OptionBase<boolean> & {
+  alone?: true;
+} & Partial<Record<'constraints' | 'required' | 'multiple' | 'default', never>>; // booleanにはこれらを指定できない。
 
 /**
  * 各プロパティの詳細情報
  */
-type OptionInformation = Normalize<NumberOption | FlagOption | StringOption>;
+type OptionInformation =
+  | Normalize<NumberOption | FlagOption | StringOption>
+  | string
+  | number
+  | true;
 
 /**
  * parseの第一引数の型。
@@ -332,7 +320,20 @@ type OptionType<OptionInfo extends OptionInformation> =
     OptionInfo extends { constraints: readonly string[] }
     ? // constraintsが指定されていれば文字列の列挙型
       OptionInfo['constraints'][number]
-    : string;
+    : // objectが指定されていれば文字列型
+    OptionInfo extends Record<string | number | symbol, unknown>
+    ? string
+    : // 文字列が指定されていれば文字列型
+    OptionInfo extends string
+    ? string
+    : // 数値が指定されていれば数値型
+    OptionInfo extends number
+    ? number
+    : // trueが指定されていれば真偽値
+    OptionInfo extends true
+    ? true
+    : // それ以外は指定されることはないはずだが念の為never
+      never;
 
 /**
  * 他のオプションと一緒に使用するオプションで指定されるプロパティ。
@@ -342,16 +343,19 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
       [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
         ? N extends string
           ? // aloneが指定されているものは存在しないプロパティ
+
             OPTMAP[N] extends { alone: true }
             ? { readonly [K in N]?: never }
             : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
             OPTMAP[N] extends { required: true } | { default: OptType }
-            ? { readonly [K in N]: OptType }
+            ? { readonly [K in N]: DescribedType<OptType, OPTMAP[N]> }
             : // multipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
-            ? { readonly [K in N]: OptType[] }
+            ? {
+                readonly [K in N]: DescribedType<readonly OptType[], OPTMAP[N]>;
+              }
             : // それ以外は存在していない可能性のあるプロパティ
-              { readonly [K in N]?: OptType }
+              { readonly [K in N]?: DescribedType<OptType, OPTMAP[N]> }
           : // プロパティキーが文字列以外の場合は除外
             never
         : never;
@@ -368,7 +372,7 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
   [N in keyof OPTMAP as OPTMAP[N] extends { alone: true }
     ? N
     : never]: Normalize<
-    { readonly [K in N]: OptionType<OPTMAP[N]> } & {
+    { readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, OPTMAP[N]> } & {
       readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
     } & {
       readonly [unnamed]?: never;
@@ -433,15 +437,6 @@ function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
   );
 }
 
-/**
- * 通常のエラー。プログラム上のミス。
- * @param strings
- * @param args
- */
-function error(...args: [TemplateStringsArray, ...unknown[]]): never {
-  throw new TypeError(args[0].reduce((r, e, i) => `${r}${args[i]}${e}`));
-}
-
 declare global {
   interface ArrayConstructor {
     // 標準のArray.isArrayの宣言では、ReadonlyArrayに対して型ガードが有効にならないので宣言を追加
@@ -481,7 +476,31 @@ function hyphenate(name: string): `${'--' | '-'}${string}` {
 }
 
 /**
+ * infoに指定されていた値に応じて変換する。
+ * - 文字列が指定されていた場合はStringOptionに変換する。
+ * - 数値が指定されていた場合はNumberOptionに変換する。
+ * - trueが指定されていた場合はFlagOptionに変換する。
+ * - 上記以外はそのまま。
+ *
+ * @param {OptionInformation} info 文字列や数値なども含むOptionInformation
+ * @returns {NumberOption | FlagOption | StringOption} object型のOptionInformation
+ */
+function normalizeOptInfo(
+  info: OptionInformation,
+): NumberOption | FlagOption | StringOption {
+  return typeof info === 'string'
+    ? { type: 'string', default: info }
+    : typeof info === 'number'
+    ? { type: 'number', default: info }
+    : info === true
+    ? { type: 'boolean' }
+    : info;
+}
+
+/**
  * optMapに問題がないかチェックする。
+ *
+ * TypeScriptから利用しているのであればコンパイル時にチェックされているはずだが、念の為チェックする。
  *
  * @template OptMap
  * @param optMap 解析するための情報。
@@ -490,85 +509,94 @@ function hyphenate(name: string): `${'--' | '-'}${string}` {
 function assertValidOptMap<OptMap extends OptionInformationMap>(
   optMap: OptMap,
 ): void {
-  for (const [name, info] of Object.entries(optMap)) {
+  for (const [name, _info] of Object.entries(optMap)) {
+    const info = normalizeOptInfo(_info);
+    const { type } = info;
     // 型指定のチェック
-    switch (info.type) {
+    switch (type) {
       case undefined:
       case 'string':
-      case 'number':
-      case 'boolean':
+        if (info.default !== undefined) {
+          // string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはずだが念の為
+          assert(
+            typeof info.default === 'string',
+            `The default value of the ${hyphenate(
+              name,
+            )} parameter must be a string.: ${info.default}`,
+          );
+        }
         break;
-      // TypeScriptのエラーになるので他のタイプは指定できないはずだが念のため
+      case 'number':
+        if (info.default !== undefined) {
+          // number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはずだが念の為
+          assert(
+            typeof info.default === 'number',
+            `The default value of the ${hyphenate(
+              name,
+            )} parameter must be a number.: ${info.default}`,
+          );
+        }
+        break;
+      case 'boolean':
+        // boolean型でrequiredを指定するとTypeScriptのエラーになるはずだが念の為
+        assert(
+          !info.required,
+          `The ${hyphenate(name)} cannot set to be required.`,
+        );
+        // boolean型でdefault値を指定するとTypeScriptのエラーになるはずだが念の為
+        assert(
+          info.default === undefined,
+          `The default value of the ${hyphenate(
+            name,
+          )} parameter cannot be specified.: ${info.default}`,
+        );
+        break;
       default:
+        // 他のタイプを指定するとTypeScriptのエラーになるはずだが念の為
         checkNever(
           info,
-          `unknown type: ${
-            (info as OptionInformation).type
-          } for the ${hyphenate(name)} parameter`,
+          `unknown type: ${type} for the ${hyphenate(name)} parameter`,
         );
     }
-    if (info.type === 'boolean' && info.required) {
-      // boolean型ではrequiredを指定できないはずだが念の為
-      return error`The ${hyphenate(name)} cannot set to be required.`;
+    if (info.alone) {
+      // defaultとaloneは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        info.default === undefined,
+        `The ${hyphenate(name)} cannot be set to both alone and default value.`,
+      );
+      // aloneとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        !info.required,
+        `The ${hyphenate(name)} cannot be both alone and required.`,
+      );
+      // aloneとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        !info.multiple,
+        `The ${hyphenate(name)} cannot be both alone and multiple.`,
+      );
     }
-    if (info.default !== undefined) {
-      const defaultValue = info.default;
-      switch (info.type) {
-        case 'number':
-          // number型なのに数値以外が指定された
-          if (typeof defaultValue !== 'number') {
-            return error`The default value of the ${hyphenate(
-              name,
-            )} parameter must be a number.: ${defaultValue}`;
-          }
-          break;
-        case undefined:
-        case 'string':
-          // string型なのに文字列以外が指定された
-          if (typeof defaultValue !== 'string') {
-            return error`The default value of the ${hyphenate(
-              name,
-            )} parameter must be a string.: ${defaultValue}`;
-          }
-          break;
-        // number型、string型以外(つまりboolean型)ではdefault値は指定できないが、念のため
-        default:
-          return error`The default value of the ${hyphenate(
-            name,
-          )} parameter cannot be specified.: ${defaultValue}`;
-      }
-      if (info.alone) {
-        // defaultとaloneは一緒に指定できないはずだが念の為
-        return error`The ${hyphenate(
+    if (info.required) {
+      // defaultとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        info.default === undefined,
+        `The ${hyphenate(
           name,
-        )} cannot be set to both alone and default value.`;
-      }
-      if (info.required) {
-        // defaultとrequiredは一緒に指定できないはずだが念の為
-        return error`The ${hyphenate(
+        )} cannot be set to both required and default value.`,
+      );
+      // requiredとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        !info.multiple,
+        `The ${hyphenate(name)} cannot be both required and multiple.`,
+      );
+    }
+    if (info.multiple) {
+      // defaultとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+      assert(
+        info.default === undefined,
+        `The ${hyphenate(
           name,
-        )} cannot be set to both required and default value.`;
-      }
-      if (info.multiple) {
-        // defaultとmultipleは一緒に指定できないはずだが念の為
-        return error`The ${hyphenate(
-          name,
-        )} cannot be set to both multiple and default value.`;
-      }
-    }
-    if (info.alone && info.required) {
-      // aloneとrequiredは一緒に指定できないはずだが念の為
-      return error`The ${hyphenate(name)} cannot be both alone and required.`;
-    }
-    if (info.alone && info.multiple) {
-      // aloneとmultipleは一緒に指定できないはずだが念の為
-      return error`The ${hyphenate(name)} cannot be both alone and multiple.`;
-    }
-    if (info.required && info.multiple) {
-      // requiredとmultipleは一緒に指定できないはずだが念の為
-      return error`The ${hyphenate(
-        name,
-      )} cannot be both required and multiple.`;
+        )} cannot be set to both multiple and default value.`,
+      );
     }
   }
 }
@@ -585,7 +613,7 @@ type ParseContext = {
     string,
     {
       readonly name: string;
-      readonly info: Readonly<OptionInformation>;
+      readonly info: Readonly<NumberOption | FlagOption | StringOption>;
     }
   >;
   /** 無名オプション */
@@ -620,8 +648,12 @@ function initParseContext<OptMap extends OptionInformationMap>(
  * @returns
  */
 function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
-  const map: Record<string, { name: string; info: OptionInformation }> = {};
-  for (const [name, info] of Object.entries(optMap)) {
+  const map: Record<
+    string,
+    { name: string; info: NumberOption | FlagOption | StringOption }
+  > = {};
+  for (const [name, _info] of Object.entries(optMap)) {
+    const info = normalizeOptInfo(_info);
     const value = { name, info };
     map[hyphenate(name)] = value;
     if (!info.alias) {
@@ -666,6 +698,7 @@ function parseOption(
     return true;
   }
   const { name, info } = optMapAlias[arg];
+  assert(typeof info === 'object');
   if (aloneOpt || (prevOpt && info.alone)) {
     // 単独で指定されるはずなのに他のオプションが指定された
     return usage`${aloneOpt || arg} must be specified alone.`;
@@ -795,6 +828,7 @@ function validateOptions(
     if (name in options) {
       continue;
     }
+    assert(typeof info === 'object');
     // requiredなのに指定されていなかったらエラー
     if (info.required) {
       return usage`${optArg} required`;
@@ -838,7 +872,6 @@ function loadPackageJson() {
   // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
   if (!module.parent) {
     // 親モジュールがない≒プログラムとしての起動ではないので空の情報を返す
-    // istanbul ignore next 同上でcoverage対象から除外
     return {};
   }
   for (const path of module.parent.paths) {
@@ -849,7 +882,12 @@ function loadPackageJson() {
     } catch (ex: unknown) {
       // ファイルが見つからない、以外のエラーはエラーとする
       // istanbul ignore next ファイルが存在しない以外のエラーを発生させるのは大変なのでcoverage対象から除外
-      if (!hasProperty(ex, 'code') || ex.code !== 'ENOENT') {
+      if (
+        !ex ||
+        (typeof ex !== 'object' && typeof ex !== 'function') ||
+        !('code' in ex) ||
+        ex.code !== 'ENOENT'
+      ) {
         // istanbul ignore next 同上でcoverage対象から除外
         throw ex;
       }
@@ -861,7 +899,7 @@ function loadPackageJson() {
   }
   // package.jsonが見つからなければエラー
   // istanbul ignore next module.parent.pathsから遡って見つからないことはあり得ないのでcoverage対象から除外
-  return error`package.json not found`;
+  throw new TypeError(`package.json not found`);
 }
 
 /**
@@ -930,6 +968,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const optionalList: string[] = [];
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
+    assert(typeof info === 'object');
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
     );
@@ -969,6 +1008,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   );
   for (const [name, info] of Object.entries(optMap)) {
     const optNames = [name];
+    assert(typeof info === 'object');
     if (info.alias) {
       if (typeof info.alias === 'string') {
         optNames.push(info.alias);
@@ -1050,4 +1090,10 @@ export function parse<OptMap extends OptionInformationMap>(
   }
   // 変更不可にして返す
   return Object.freeze(context.options) as Options<OptMap>;
+}
+
+function assert(o: unknown, message?: string): asserts o {
+  if (!o) {
+    throw new TypeError(message);
+  }
 }
