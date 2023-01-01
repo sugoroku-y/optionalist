@@ -9,9 +9,9 @@ function watch(_:string[], _callback: (filename: string) => void): never {
   process.exit(0);
 }
 
-// ```ts:#1
-import * as optionalist from 'optionalist';
+import * as optionalist from '../../';
 
+// ```ts:#1
 const options = optionalist.parse({
   [optionalist.helpString]: {
     describe: 'The description for command.',
@@ -50,7 +50,7 @@ const options = optionalist.parse({
     example: 'script_filename',
     describe: 'Specify the script filename(s) to execute.',
   },
-});
+} as const);
 options.help ? options : options.init ? options : options;
 // この時点でのoptionsは
 // const options:
