@@ -373,7 +373,7 @@ if (options.help) {
 }
 ```
 
-VS Codeなどの型情報が表示されるエディターを使用しているなら、各パラメーターの説明が表示されるようにしています。
+VS Codeなどの型情報が表示されるエディターを使用しているなら、型情報として各パラメーターの説明が表示されます。
 
 ```ts
 const options = optionalist.parse({
@@ -393,12 +393,14 @@ const options = optionalist.parse({
 loadConfigfile(options.config);
 ```
 
-と記述したときに、`.config`にマウスカーソルを合わせれば、
+と記述したときに、`config`にマウスカーソルを合わせれば、
 
 ```ts
 (property) config: string & {
-    [describe]?: "Specify the configuration file for your project." | undefined;
+    [description]: "--config config_filename: Specify the configuration file for your project.";
 }
 ```
 
 のように表示されます。
+
+ただし実際にこの説明文をプロパティとして保持しているわけではないため、アクセスできないことに注意してください。

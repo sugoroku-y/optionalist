@@ -621,7 +621,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.ddd);
     expect(options).toEqualType<{
       // dddが有効な場合はdddとhelpStringだけ使える
-      readonly ddd: DescribedType<string, { describe: 'ddd' }>;
+      readonly ddd: DescribedType<string, 'ddd', { describe: 'ddd' }>;
       readonly [helpString]: string;
       // その他のオプションは使えない
       readonly aaa?: never;
@@ -651,7 +651,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.hhh);
     expect(options).toEqualType<{
       // hhhが有効な場合はhhhとhelpStringだけ使える
-      readonly hhh: DescribedType<number, { describe: 'hhh' }>;
+      readonly hhh: DescribedType<number, 'hhh', { describe: 'hhh' }>;
       readonly [helpString]: string;
       // その他のオプションは使えない
       readonly aaa?: never;
@@ -681,7 +681,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.jjj);
     expect(options).toEqualType<{
       // jjjが有効な場合はjjjとhelpStringだけ使える
-      readonly jjj: DescribedType<true, { describe: 'jjj' }>;
+      readonly jjj: DescribedType<true, 'jjj', { describe: 'jjj' }>;
       readonly [helpString]: string;
       // その他のオプションは使えない
       readonly aaa?: never;
@@ -711,7 +711,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.nnn);
     expect(options).toEqualType<{
       // nnnが有効な場合はnnnとhelpStringだけ使える
-      readonly nnn: DescribedType<string, { describe: 'nnn' }>;
+      readonly nnn: DescribedType<string, 'nnn', { describe: 'nnn' }>;
       readonly [helpString]: string;
       readonly aaa?: never;
       readonly bbb?: never;
@@ -756,22 +756,22 @@ describe('type check Options', () => {
       readonly jjj?: never;
       readonly nnn?: never;
       // aloneでないオプションすべてが使える。
-      readonly aaa?: DescribedType<string, { describe: 'aaa' }>;
-      readonly bbb: DescribedType<string, { describe: 'bbb' }>;
-      readonly ccc: DescribedType<string, { describe: 'ccc' }>;
-      readonly eee?: DescribedType<number, { describe: 'eee' }>;
-      readonly fff: DescribedType<number, { describe: 'fff' }>;
-      readonly ggg: DescribedType<number, { describe: 'ggg' }>;
-      readonly iii?: DescribedType<true, { describe: 'iii' }>;
-      readonly kkk?: DescribedType<string, { describe: 'kkk' }>;
-      readonly lll: DescribedType<string, { describe: 'lll' }>;
-      readonly mmm: DescribedType<string, { describe: 'mmm' }>;
-      readonly ooo: DescribedType<readonly string[], { describe: 'ooo' }>;
-      readonly ppp: DescribedType<readonly number[], { describe: 'ppp' }>;
-      readonly qqq: DescribedType<readonly string[], { describe: 'qqq' }>;
-      readonly rrr?: DescribedType<string, { describe?: never }>;
-      readonly sss?: DescribedType<number, { describe?: never }>;
-      readonly ttt?: DescribedType<true, { describe?: never }>;
+      readonly aaa?: DescribedType<string, 'aaa', { describe: 'aaa' }>;
+      readonly bbb: DescribedType<string, 'bbb', { describe: 'bbb' }>;
+      readonly ccc: DescribedType<string, 'ccc', { describe: 'ccc' }>;
+      readonly eee?: DescribedType<number, 'eee', { describe: 'eee' }>;
+      readonly fff: DescribedType<number, 'fff', { describe: 'fff' }>;
+      readonly ggg: DescribedType<number, 'ggg', { describe: 'ggg' }>;
+      readonly iii?: DescribedType<true, 'iii', { describe: 'iii' }>;
+      readonly kkk?: DescribedType<string, 'kkk', { describe: 'kkk' }>;
+      readonly lll: DescribedType<string, 'lll', { describe: 'lll' }>;
+      readonly mmm: DescribedType<string, 'mmm', { describe: 'mmm' }>;
+      readonly ooo: DescribedType<readonly string[], 'ooo', { describe: 'ooo' }>;
+      readonly ppp: DescribedType<readonly number[], 'ppp', { describe: 'ppp' }>;
+      readonly qqq: DescribedType<readonly string[], 'qqq', { describe: 'qqq' }>;
+      readonly rrr?: string;
+      readonly sss?: number;
+      readonly ttt?: true;
       readonly [unnamed]: readonly string[];
       // helpStringももちろん使える。
       readonly [helpString]: string;

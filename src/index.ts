@@ -1,17 +1,28 @@
 import * as fs from 'fs';
 import { resolve } from 'path';
 
+/**
+ * 説明付きの型で説明を表示するためのダミーのシンボル。
+ *
+ * 実際には存在しないのでアクセスできない。
+ * @deprecated
+ */
 declare const description: unique symbol;
+
+/**
+ * 文字数に応じて前に`-`をつける。
+ *
+ * 1文字なら`-x`のように1つだけ、2文字以上なら`--xx`のように2文字の`-`をつける。
+ */
+type Hyphenate<NAME extends string> = NAME extends `${infer _}${infer _}` ? `--${NAME}` : `-${NAME}`;
+
 /** 説明つきの型 */
-export type DescribedType<TYPE, OPT> = OPT extends {
+export type DescribedType<TYPE, NAME extends string, OPT> = OPT extends {
   readonly describe: `${infer DESCRIPTION}`;
 }
-  ? // describeが固定文字列でなければ説明無しの型
-    string extends DESCRIPTION
-    ? TYPE
-    : TYPE & { [description]?: DESCRIPTION }
+  ? TYPE & { [description]: `${Hyphenate<NAME>}${TYPE extends boolean ? '' : ` ${OPT extends { example: `${infer EXAMPLE}` } ? EXAMPLE : 'parameter'}`}: ${DESCRIPTION}` }
   : // describeが指定されていなければ説明無しの型
-    TYPE;
+  TYPE;
 
 /**
  * &で結合されたオブジェクト型をまとめる。
@@ -55,8 +66,8 @@ type Combination<T> = (
   T extends unknown ? (arg: T) => unknown : never
 ) extends (arg: infer C) => unknown
   ? C extends Record<never, never>
-    ? Normalize<C>
-    : never
+  ? Normalize<C>
+  : never
   : never;
 
 /**
@@ -80,8 +91,8 @@ type OmitAsExisting<T> = Partial<Record<keyof T, never>>;
 /** それぞれのプロパティが1つだけ存在している、もしくは1つも存在していない状態にする。 */
 type Exclusive<T> =
   | {
-      [N in keyof T]: Pick<T, N> & OmitAsExisting<Omit<T, N>>;
-    }[keyof T]
+    [N in keyof T]: Pick<T, N> & OmitAsExisting<Omit<T, N>>;
+  }[keyof T]
   | OmitAsExisting<T>;
 
 /**
@@ -101,55 +112,55 @@ type OptionBase<T extends string | number | boolean> = (T extends boolean
   : T extends number
   ? { type: 'number' }
   : { readonly type?: 'string' }) & {
-  /**
-   * オプションの型。
-   *
-   * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
-   * - `number`を指定すると数値型のオプションとなる。
-   * - `boolean`を指定すると真偽値型のオプションとなる。
-   */
-  type?: 'string' | 'number' | 'boolean';
-  /**
-   * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
-   */
-  alias?: string | readonly string[];
-  /**
-   * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
-   */
-  describe?: string;
-  /**
-   * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
-   */
-  example?: string;
-  /**
-   * aloneにtrueを指定すると、単独で指定するオプションとなる。
-   *
-   * required、default、multipleとは同時に指定できない。
-   */
-  alone?: true;
-  /**
-   * requiredにtrueを指定すると、必須オプションとなる。
-   *
-   * alone、default、multipleとは同時に指定できない。
-   */
-  required?: true;
-  /**
-   * defaultに値を指定すると、省略時にその値が設定される。
-   *
-   * alone、required、multipleとは同時に指定できない。
-   */
-  default?: T extends string | number ? T : never;
-  /**
-   * multipleにtrueを指定すると、複数指定できる。
-   *
-   * alone、required、defaultとは同時に指定できない。
-   */
-  multiple?: true;
-  /**
-   * 制約。
-   */
-  constraints?: unknown;
-};
+    /**
+     * オプションの型。
+     *
+     * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
+     * - `number`を指定すると数値型のオプションとなる。
+     * - `boolean`を指定すると真偽値型のオプションとなる。
+     */
+    type?: 'string' | 'number' | 'boolean';
+    /**
+     * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
+     */
+    alias?: string | readonly string[];
+    /**
+     * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
+     */
+    describe?: string;
+    /**
+     * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
+     */
+    example?: string;
+    /**
+     * aloneにtrueを指定すると、単独で指定するオプションとなる。
+     *
+     * required、default、multipleとは同時に指定できない。
+     */
+    alone?: true;
+    /**
+     * requiredにtrueを指定すると、必須オプションとなる。
+     *
+     * alone、default、multipleとは同時に指定できない。
+     */
+    required?: true;
+    /**
+     * defaultに値を指定すると、省略時にその値が設定される。
+     *
+     * alone、required、multipleとは同時に指定できない。
+     */
+    default?: T extends string | number ? T : never;
+    /**
+     * multipleにtrueを指定すると、複数指定できる。
+     *
+     * alone、required、defaultとは同時に指定できない。
+     */
+    multiple?: true;
+    /**
+     * 制約。
+     */
+    constraints?: unknown;
+  };
 
 /** 文字型/数値型オプションの共通情報 */
 type OptionWithValue<T extends string | number> = OptionBase<T> &
@@ -164,75 +175,75 @@ type OptionWithValue<T extends string | number> = OptionBase<T> &
 type StringOption = OptionWithValue<string> &
   (
     | {
-        /**
-         *
-         * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
-         */
-        constraints: readonly string[];
-        /**
-         * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
-         */
-        ignoreCase?: true;
-      }
+      /**
+       *
+       * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
+       */
+      constraints: readonly string[];
+      /**
+       * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
+       */
+      ignoreCase?: true;
+    }
     | {
-        /**
-         *
-         * 正規表現の場合は文字列として指定できるパターン。ここで設定したパターンにマッチしない文字列を指定するとエラーとなる。
-         */
-        constraints: RegExp;
-        /**
-         *
-         * constraintsに正規表現を指定した場合は、正規表現のiフラグを使うこと。
-         */
-        ignoreCase?: never;
-      }
+      /**
+       *
+       * 正規表現の場合は文字列として指定できるパターン。ここで設定したパターンにマッチしない文字列を指定するとエラーとなる。
+       */
+      constraints: RegExp;
+      /**
+       *
+       * constraintsに正規表現を指定した場合は、正規表現のiフラグを使うこと。
+       */
+      ignoreCase?: never;
+    }
     | {
-        constraints?: never;
-      }
+      constraints?: never;
+    }
   );
 /** 数値型のオプション情報 */
 type NumberOption = OptionWithValue<number> &
   (
     | {
-        /**
-         *
-         * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
-         */
-        constraints: readonly number[];
-      }
+      /**
+       *
+       * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
+       */
+      constraints: readonly number[];
+    }
     | {
-        /**
-         *
-         * 最小値、最大値の指定の場合は、ここで設定した範囲外の数値を指定するとエラーになる。
-         */
-        constraints: Exclude<
-          Exclusive<{
-            /**
-             * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
-             */
-            min: number;
-            /**
-             * 数値として指定できる最小値(この値は含まない)。ここで設定した数値以下の数値が指定されるとエラーになる。
-             */
-            minExclusive: number;
-          }> &
-            Exclusive<{
-              /**
-               * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
-               */
-              max: number;
-              /**
-               * 数値として指定できる最大値(この値は含まない)。ここで設定した数値以上の数値が指定されるとエラーになる。
-               */
-              maxExclusive: number;
-            }>,
-          // それぞれ省略可能だが、すべて省略された場合はエラーとする
-          Partial<Record<string, never>>
-        >;
-      }
+      /**
+       *
+       * 最小値、最大値の指定の場合は、ここで設定した範囲外の数値を指定するとエラーになる。
+       */
+      constraints: Exclude<
+        Exclusive<{
+          /**
+           * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+           */
+          min: number;
+          /**
+           * 数値として指定できる最小値(この値は含まない)。ここで設定した数値以下の数値が指定されるとエラーになる。
+           */
+          minExclusive: number;
+        }> &
+        Exclusive<{
+          /**
+           * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+           */
+          max: number;
+          /**
+           * 数値として指定できる最大値(この値は含まない)。ここで設定した数値以上の数値が指定されるとエラーになる。
+           */
+          maxExclusive: number;
+        }>,
+        // それぞれ省略可能だが、すべて省略された場合はエラーとする
+        Partial<Record<string, never>>
+      >;
+    }
     | {
-        constraints?: never;
-      }
+      constraints?: never;
+    }
   );
 
 /** 真偽値型のオプション情報 */
@@ -299,86 +310,86 @@ type OptionInformationMap = Readonly<{
 type OptionType<OptionInfo extends OptionInformation> =
   // typeの値で振り分け
   OptionInfo extends { type: 'boolean' }
-    ? // typeがbooleanなら真偽値
-      true // だが、falseにすることはできないのでtrueになる。
-    : OptionInfo extends { type: 'number' }
-    ? // typeがnumberなら数値型
-      OptionInfo extends { constraints: readonly number[] }
-      ? // constraintsが指定されていれば数値の列挙型
-        OptionInfo['constraints'][number]
-      : number
-    : OptionInfo extends { type: 'string' }
-    ? // typeがstringなら文字列型
-      OptionInfo extends { constraints: readonly string[] }
-      ? // constraintsが指定されていれば文字列の列挙型
-        OptionInfo['constraints'][number]
-      : string
-    : OptionInfo extends { type: unknown }
-    ? // typeにその他の値が指定されていることはない
-      never
-    : // type省略時にも文字列型
-    OptionInfo extends { constraints: readonly string[] }
-    ? // constraintsが指定されていれば文字列の列挙型
-      OptionInfo['constraints'][number]
-    : // objectが指定されていれば文字列型
-    OptionInfo extends Record<string | number | symbol, unknown>
-    ? string
-    : // 文字列が指定されていれば文字列型
-    OptionInfo extends string
-    ? string
-    : // 数値が指定されていれば数値型
-    OptionInfo extends number
-    ? number
-    : // trueが指定されていれば真偽値
-    OptionInfo extends true
-    ? true
-    : // それ以外は指定されることはないはずだが念の為never
-      never;
+  ? // typeがbooleanなら真偽値
+  true // だが、falseにすることはできないのでtrueになる。
+  : OptionInfo extends { type: 'number' }
+  ? // typeがnumberなら数値型
+  OptionInfo extends { constraints: readonly number[] }
+  ? // constraintsが指定されていれば数値の列挙型
+  OptionInfo['constraints'][number]
+  : number
+  : OptionInfo extends { type: 'string' }
+  ? // typeがstringなら文字列型
+  OptionInfo extends { constraints: readonly string[] }
+  ? // constraintsが指定されていれば文字列の列挙型
+  OptionInfo['constraints'][number]
+  : string
+  : OptionInfo extends { type: unknown }
+  ? // typeにその他の値が指定されていることはない
+  never
+  : // type省略時にも文字列型
+  OptionInfo extends { constraints: readonly string[] }
+  ? // constraintsが指定されていれば文字列の列挙型
+  OptionInfo['constraints'][number]
+  : // objectが指定されていれば文字列型
+  OptionInfo extends Record<string | number | symbol, unknown>
+  ? string
+  : // 文字列が指定されていれば文字列型
+  OptionInfo extends string
+  ? string
+  : // 数値が指定されていれば数値型
+  OptionInfo extends number
+  ? number
+  : // trueが指定されていれば真偽値
+  OptionInfo extends true
+  ? true
+  : // それ以外は指定されることはないはずだが念の為never
+  never;
 
 /**
  * 他のオプションと一緒に使用するオプションで指定されるプロパティ。
  */
 type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
   | {
-      [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
-        ? N extends string
-          ? // aloneが指定されているものは存在しないプロパティ
+    [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
+    ? N extends string
+    ? // aloneが指定されているものは存在しないプロパティ
 
-            OPTMAP[N] extends { alone: true }
-            ? { readonly [K in N]?: never }
-            : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
-            OPTMAP[N] extends { required: true } | { default: OptType }
-            ? { readonly [K in N]: DescribedType<OptType, OPTMAP[N]> }
-            : // multipleが指定されているものは配列型
-            OPTMAP[N] extends { multiple: true }
-            ? {
-                readonly [K in N]: DescribedType<readonly OptType[], OPTMAP[N]>;
-              }
-            : // それ以外は存在していない可能性のあるプロパティ
-              { readonly [K in N]?: DescribedType<OptType, OPTMAP[N]> }
-          : // プロパティキーが文字列以外の場合は除外
-            never
-        : never;
-    }[keyof OPTMAP]
-  | {
-      readonly [unnamed]: readonly string[];
-      readonly [helpString]: string;
+    OPTMAP[N] extends { alone: true }
+    ? { readonly [K in N]?: never }
+    : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
+    OPTMAP[N] extends { required: true } | { default: OptType }
+    ? { readonly [K in N]: DescribedType<OptType, N, OPTMAP[N]> }
+    : // multipleが指定されているものは配列型
+    OPTMAP[N] extends { multiple: true }
+    ? {
+      readonly [K in N]: DescribedType<readonly OptType[], N, OPTMAP[N]>;
     }
+    : // それ以外は存在していない可能性のあるプロパティ
+    { readonly [K in N]?: DescribedType<OptType, N, OPTMAP[N]> }
+    : // プロパティキーが文字列以外の場合は除外
+    never
+    : never;
+  }[keyof OPTMAP]
+  | {
+    readonly [unnamed]: readonly string[];
+    readonly [helpString]: string;
+  }
 >;
 /**
  * 単独で指定されるオプションのプロパティ
  */
 type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
-  [N in keyof OPTMAP as OPTMAP[N] extends { alone: true }
-    ? N
-    : never]: Normalize<
-    { readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, OPTMAP[N]> } & {
+  [N in keyof OPTMAP as N extends string ? OPTMAP[N] extends { alone: true }
+  ? N
+  : never : never]: N extends string ? Normalize<
+    { readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, N, OPTMAP[N]> } & {
       readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
     } & {
       readonly [unnamed]?: never;
       readonly [helpString]: string;
     }
-  >;
+  > : never;
 }>;
 
 /**
@@ -491,10 +502,10 @@ function normalizeOptInfo(
   return typeof info === 'string'
     ? { type: 'string', default: info }
     : typeof info === 'number'
-    ? { type: 'number', default: info }
-    : info === true
-    ? { type: 'boolean' }
-    : info;
+      ? { type: 'number', default: info }
+      : info === true
+        ? { type: 'boolean' }
+        : info;
 }
 
 /**
@@ -718,9 +729,8 @@ function parseOption(
       }
       const value = +r.value;
       if (!isFinite(value)) {
-        return usage`${arg} needs a number parameter as the ${example(info)}: ${
-          r.value
-        }`;
+        return usage`${arg} needs a number parameter as the ${example(info)}: ${r.value
+          }`;
       }
       if (info.constraints) {
         if (Array.isArray(info.constraints)) {
@@ -779,9 +789,9 @@ function parseOption(
         } else {
           const [constraints, findValue] = info.ignoreCase
             ? [
-                info.constraints.map(s => s.toUpperCase()),
-                r.value.toUpperCase(),
-              ]
+              info.constraints.map(s => s.toUpperCase()),
+              r.value.toUpperCase(),
+            ]
             : [info.constraints, r.value];
           const index = constraints.indexOf(findValue);
           if (index < 0) {
@@ -985,8 +995,8 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     ...aloneList.map(
       option =>
         `  npx ${
-          // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
-          processName ?? process.argv[1]
+        // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
+        processName ?? process.argv[1]
         } ${option}`,
     ),
   );
@@ -1017,8 +1027,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
       }
     }
     help.push(
-      `  ${optNames.map(hyphenate).join(', ')}${
-        info.type === 'boolean' ? '' : ' ' + example(info)
+      `  ${optNames.map(hyphenate).join(', ')}${info.type === 'boolean' ? '' : ' ' + example(info)
       }`,
       ...indent(info.describe, '    '),
     );
