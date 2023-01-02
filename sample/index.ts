@@ -9,7 +9,7 @@ function watch(_:string[], _callback: (filename: string) => void): never {
   process.exit(0);
 }
 
-import * as optionalist from '../../';
+import * as optionalist from '../';
 
 // ```ts:#1
 const options = optionalist.parse({

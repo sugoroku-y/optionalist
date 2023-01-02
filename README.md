@@ -13,7 +13,7 @@ optionalistはTypeScript向けに作られたコマンドラインパーザー�
 
 `optionalist.parse`にコマンドラインの詳細を渡して、解析した結果を受け取ります。
 
-```ts:./sample/src/main.ts#1
+```ts:./sample/index.ts#1
 const options = optionalist.parse({
   [optionalist.helpString]: {
     describe: 'The description for command.',
@@ -90,7 +90,7 @@ options.help ? options : options.init ? options : options;
 
 受け取った結果は自動的に型付けされ、もし指定されていればデフォルト値が設定された状態になっています。
 
-```ts:./sample/src/main.ts#2
+```ts:./sample/index.ts#2
 // --helpが指定されたとき
 if (options.help) {
   options;
