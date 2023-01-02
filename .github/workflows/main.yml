@@ -1,16 +1,20 @@
 name: CI
 on:
   push:
-    branches: [master]
+    branches: 
+      - master
+      - develop
   pull_request:
-    branches: [master]
+    branches: 
+      - master
+      - develop
   workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [10.x, 11.x, 12.x, 14.x, 15.x, 16.x, 17.x]
+        node-version: [10.x, 11.x, 12.x, 14.x, 15.x, 16.x, 17.x, 18.x, 19.x]
 
     steps:
       - uses: actions/checkout@v2
