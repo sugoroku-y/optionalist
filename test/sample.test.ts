@@ -1,5 +1,7 @@
 import { spawn } from 'child_process';
-import { resolve } from 'path';
+import { extname, resolve } from 'path';
+import { platform } from 'os';
+import { existsSync } from 'fs';
 
 const SETTIMEOUT_LIMIT = 0x7fffffff; // max 32-bit signed integer
 
@@ -52,15 +54,51 @@ class CommandPrompt {
     process.stdout.write(`exec: ${commandline}\n`);
     this.#out.clear();
     this.#err.clear();
-    const [command, ...parameters] = [
-      ...(function* () {
-        const re = /(?:"([^"]*(?:\\.[^"]*)*)"|\S+)+/g;
+    const [_command, ...parameters] = (function* () {
+      // matchAllが使えない環境向けに自前で同等の処理
+      for (const match of function*(str, re) {
         let match;
-        while ((match = re.exec(commandline)) !== null) {
-          yield match[1]?.replace(/\\(.)/g, '$1') ?? match[0];
+        while (!!(match = re.exec(str))) {
+          yield match;
         }
-      })(),
-    ];
+      }(commandline, /(?:"[^"]*(?:\\.[^"]*)*"|\S+)+/g)) {
+        yield match[0].replace(
+          /"([^"]*(?:\\.[^"]*)*)"|\S+/gy,
+          (whole, quoted: string | undefined) =>
+            // ""で囲われているところは""を外してエスケープを解除
+            quoted?.replace(/\\./g, ch => ch[1]) ?? whole,
+        );
+      }
+    })();
+    const command = (_command => {
+      // Windowsでcommandに拡張子の指定がなくexe以外の拡張子のものしかPATHに存在していないときspawnで実行できないので、自前で検索して拡張子を付加する
+      BLOCK: {
+        if (extname(_command)) {
+          // 拡張子が指定されているなら何もしない
+          break BLOCK;
+        }
+        if (platform() !== 'win32') {
+          // Windows以外では何もしない
+          break BLOCK;
+        }
+        if (!process.env.PATH || !process.env.PATHEXT) {
+          // 環境変数PATHとPATHEXTが設定されていなければ何もしない
+          break BLOCK;
+        }
+        // 実行形式として検索する拡張子
+        const pathext = process.env.PATHEXT.split(';');
+        // PATHを先頭から検索
+        for (const p of process.env.PATH.split(';')) {
+          const ext = pathext.find(ext =>
+            existsSync(resolve(p, `${_command}${ext}`)),
+          );
+          if (ext) {
+            return `${_command}${ext}`;
+          }
+        }
+      }
+      return _command;
+    })(_command);
     return new Promise<void>((resolve, reject) => {
       const proc = spawn(command, parameters, {
         cwd: this.#cwd,
@@ -112,50 +150,49 @@ Options:
 
   beforeAll(async () => {
     prompt.cwd = resolve(__dirname, '..');
-    await prompt.exec`npm run build`;
-    prompt.cwd = resolve(__dirname, '..', 'sample');
-    await prompt.exec`npm ci`;
-    await prompt.exec`npm run build`;
+    jest.setTimeout(SETTIMEOUT_LIMIT);
   }, SETTIMEOUT_LIMIT);
 
   test('show help', async () => {
-    await prompt.exec`node ./ --help`;
+    await prompt.exec`npx ts-node sample/ --help`;
     expect(prompt.stdout).toBe(`${helpString``}\n`);
     expect(prompt.stderr).toBe('');
   });
 
   test('initialize', async () => {
-    await prompt.exec`node ./ --init`;
+    await prompt.exec`npx ts-node sample/ --init`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
   test('show help, initialize', async () => {
-    await expect(prompt.exec`node ./ --help --init`).rejects.toThrow(
-      'FAILED(exit code: 1)',
-    );
+    await expect(
+      prompt.exec`npx ts-node sample/ --help --init`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`--help must be specified alone.`);
   });
 
   test('show help, script_filename', async () => {
-    await expect(prompt.exec`node ./ --help script_filename`).rejects.toThrow(
-      'FAILED(exit code: 1)',
-    );
+    await expect(
+      prompt.exec`npx ts-node sample/ --help script_filename`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`--help must be specified alone.`);
   });
 
   test('no params', async () => {
-    await expect(prompt.exec`node ./`).rejects.toThrow('FAILED(exit code: 1)');
+    await expect(prompt.exec`npx ts-node sample/`).rejects.toThrow(
+      'FAILED(exit code: 1)',
+    );
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`--output required`);
   });
 
   test('no output filename', async () => {
-    await expect(prompt.exec`node ./ --output`).rejects.toThrow(
-      'FAILED(exit code: 1)',
-    );
+    await expect(
+      prompt.exec`npx ts-node sample/ --output`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--output needs a parameter as the output_filename`,
@@ -163,20 +200,20 @@ Options:
   });
 
   test('specify output', async () => {
-    await prompt.exec`node ./ --output output.txt`;
+    await prompt.exec`npx ts-node sample/ --output output.txt`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
   test('specify output,config', async () => {
-    await prompt.exec`node ./ --output output.txt --config config_file`;
+    await prompt.exec`npx ts-node sample/ --output output.txt --config config_file`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
   test('specify output,config without config file', async () => {
     await expect(
-      prompt.exec`node ./ --output output.txt --config`,
+      prompt.exec`npx ts-node sample/ --output output.txt --config`,
     ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
@@ -185,14 +222,14 @@ Options:
   });
 
   test('specify output,timeout', async () => {
-    await prompt.exec`node ./ --output output.txt --timeout 5000`;
+    await prompt.exec`npx ts-node sample/ --output output.txt --timeout 5000`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
   test('specify output,timeout without timeout', async () => {
     await expect(
-      prompt.exec`node ./ --output output.txt --timeout`,
+      prompt.exec`npx ts-node sample/ --output output.txt --timeout`,
     ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
@@ -202,7 +239,7 @@ Options:
 
   test('specify output,timeout with NaN', async () => {
     await expect(
-      prompt.exec`node ./ --output output.txt --timeout NotANumber`,
+      prompt.exec`npx ts-node sample/ --output output.txt --timeout NotANumber`,
     ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
@@ -211,24 +248,24 @@ Options:
   });
 
   test('unknown option', async () => {
-    await expect(prompt.exec`node ./ --unknown`).rejects.toThrow(
-      'FAILED(exit code: 1)',
-    );
+    await expect(
+      prompt.exec`npx ts-node sample/ --unknown`,
+    ).rejects.toThrow('FAILED(exit code: 1)');
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`unknown options: --unknown`);
   });
 
   test('specify output,watch', async () => {
-    await prompt.exec`node ./ --output output.txt --watch`;
+    await prompt.exec`npx ts-node sample/ --output output.txt --watch`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
   test('specify output, script_filename', async () => {
-    await prompt.exec`node ./ --output output.txt script_filename`;
+    await prompt.exec`npx ts-node sample/ --output output.txt script_filename`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
-    await prompt.exec`node ./ --output output.txt -- --unknown`;
+    await prompt.exec`npx ts-node sample/ --output output.txt -- --unknown`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });

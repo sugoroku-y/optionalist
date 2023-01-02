@@ -5,11 +5,5 @@
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc --build src/tsconfig.json"
-  },
-  "dependencies": {
-    "optionalist": "file:.."
-  },
-  "devDependencies": {
-    "typescript": "^4.5.2"
   }
 }
