@@ -14,16 +14,338 @@ declare const description: unique symbol;
  *
  * 1文字なら`-x`のように1つだけ、2文字以上なら`--xx`のように2文字の`-`をつける。
  */
-type Hyphenate<NAME extends string> = NAME extends `${infer _}${infer _}` ? `--${NAME}` : `-${NAME}`;
+type Hyphenate<NAME extends string> =
+  NAME extends `${infer _}${infer _}${infer _}` ? `--${NAME}` : `-${NAME}`;
+
+/**
+ * 配列を連結する
+ */
+type Join<A extends readonly (string | number)[]> = A extends [
+  infer FIRST,
+  ...infer REST,
+]
+  ? FIRST extends string | number
+    ? REST extends [string | number, ...(string | number)[]]
+      ? `${FIRST}, ${Join<REST>}`
+      : FIRST
+    : never
+  : never;
+
+type RagneConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
+  ? {
+      [description]:
+        | (CONSTRAINTS extends { min: infer MIN }
+            ? MIN extends number
+              ? number extends MIN
+                ? never
+                : `constrained by a minimum number value of ${MIN}.`
+              : never
+            : CONSTRAINTS extends { minExclusive: infer MIN }
+            ? MIN extends number
+              ? number extends MIN
+                ? never
+                : `constrained by a number greater than ${MIN}.`
+              : never
+            : never)
+        | (CONSTRAINTS extends { max: infer MAX }
+            ? MAX extends number
+              ? number extends MAX
+                ? never
+                : `constrained by maximum number value of ${MAX}.`
+              : never
+            : CONSTRAINTS extends { maxExclusive: infer MAX }
+            ? MAX extends number
+              ? number extends MAX
+                ? never
+                : `constrained by a number less than ${MAX}.`
+              : never
+            : never);
+    }
+  : {};
 
 /** 説明つきの型 */
-export type DescribedType<TYPE, NAME extends string, OPT> = OPT extends {
-  readonly describe: `${infer DESCRIPTION}`;
-}
-  ? TYPE & { [description]: `${Hyphenate<NAME>}${TYPE extends boolean ? '' : ` ${OPT extends { example: `${infer EXAMPLE}` } ? EXAMPLE : 'parameter'}`}: ${DESCRIPTION}` }
-  : // describeが指定されていなければ説明無しの型
-  TYPE;
+export type DescribedType<TYPE, NAME, OPT> = NAME extends string
+  ? TYPE &
+      Normalize<
+        | {
+            [description]: `${Hyphenate<NAME>}${TYPE extends boolean
+              ? ''
+              : ` ${OPT extends { example: `${infer EXAMPLE}` }
+                  ? EXAMPLE
+                  : 'parameter'}`}${OPT extends {
+              readonly describe: `${infer DESCRIPTION}`;
+            }
+              ? `: ${DESCRIPTION}`
+              : ''}`;
+          }
+        | (TYPE extends string | number
+            ? OPT extends { readonly required: true }
+              ? { [description]: 'must be specified always.' }
+              : never
+            : never)
+        | (OPT extends { readonly alone: true }
+            ? { [description]: 'must be specified alone.' }
+            : never)
+        | (TYPE extends string | number
+            ? OPT extends { readonly default: infer DEFAULT }
+              ? DEFAULT extends TYPE
+                ? TYPE extends DEFAULT
+                  ? never
+                  : { [description]: `as ${DEFAULT} if omitted.` }
+                : never
+              : OPT extends string | number
+                ? TYPE extends OPT
+                  ? never
+                  : { [description]: `as ${OPT} if omitted.` }
+                : never
+            : never)
+        | (OPT extends { readonly multiple: true }
+            ? { [description]: 'can be specified multiple.' }
+            : never)
+        | (OPT extends { readonly constraints: infer CONSTRAINTS }
+            ? CONSTRAINTS extends RegExp
+              ? TYPE extends string
+                ? { [description]: 'constrained by RegExp.' }
+                : TYPE extends readonly string[]
+                ? { [description]: 'constrained by RegExp.' }
+                : never
+              : CONSTRAINTS extends readonly unknown[]
+              ? TYPE extends string | number
+                ? CONSTRAINTS extends readonly TYPE[]
+                  ? { [description]: `constrained to ${Join<CONSTRAINTS>}.` }
+                  : never
+                : never
+              : CONSTRAINTS extends Record<string, number>
+              ? TYPE extends number
+                ? RagneConstraints<CONSTRAINTS>
+                : TYPE extends readonly number[]
+                ? RagneConstraints<CONSTRAINTS>
+                : never
+              : never
+            : never)
+      >
+  : never;
 
+/** ユーティリティー型のテスト用 */
+type TypeTest<ACTUAL, EXPECT> = (<T>(a: T) => ACTUAL) extends <T>(
+  a: T,
+) => EXPECT
+  ? (<T>(a: T) => EXPECT) extends <T>(a: T) => ACTUAL
+    ? true
+    : false & { actual: ACTUAL }
+  : false & { actual: ACTUAL };
+type Validate<T extends true> = T;
+
+// 型自体や内部で使用するSymbolをexportしていないため外部ではテストできない型のテスト
+// これらのテスト用の型はindex.d.tsからは消えているのでよしとする
+type _TEST_Hyphenate1 = Validate<TypeTest<Hyphenate<'a'>, '-a'>>;
+type _TEST_Hyphenate2 = Validate<TypeTest<Hyphenate<'aa'>, '--aa'>>;
+
+type _TEST_Join1 = Validate<TypeTest<Join<[]>, never>>;
+type _TEST_Join2 = Validate<TypeTest<Join<[123, 456, 789]>, '123, 456, 789'>>;
+type _TEST_Join3 = Validate<
+  TypeTest<Join<['abc', 'def', 'ghi']>, 'abc, def, ghi'>
+>;
+
+type _TEST_DescribedType1 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', {}>,
+    string & { [description]: '--aaa parameter' }
+  >
+>;
+type _TEST_DescribedType2 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { describe: 'abcdef' }>,
+    string & { [description]: '--aaa parameter: abcdef' }
+  >
+>;
+type _TEST_DescribedType3 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { example: 'AAA' }>,
+    string & { [description]: '--aaa AAA' }
+  >
+>;
+type _TEST_DescribedType4 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { alone: true }>,
+    string & { [description]: '--aaa parameter' | 'must be specified alone.' }
+  >
+>;
+type _TEST_DescribedType5 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { required: true }>,
+    string & { [description]: '--aaa parameter' | 'must be specified always.' }
+  >
+>;
+type _TEST_DescribedType6 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { default: 'abc' }>,
+    string & { [description]: '--aaa parameter' | 'as abc if omitted.' }
+  >
+>;
+type _TEST_DescribedType7 = Validate<
+  TypeTest<
+    DescribedType<readonly string[], 'aaa', { multiple: true }>,
+    readonly string[] & {
+      [description]: '--aaa parameter' | 'can be specified multiple.';
+    }
+  >
+>;
+type _TEST_DescribedType8 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { constraints: RegExp }>,
+    string & {
+      [description]: '--aaa parameter' | 'constrained by RegExp.';
+    }
+  >
+>;
+type _TEST_DescribedType9 = Validate<
+  TypeTest<
+    DescribedType<string, 'aaa', { constraints: ['abc', 'def', 'ghi'] }>,
+    string & {
+      [description]: '--aaa parameter' | 'constrained to abc, def, ghi.';
+    }
+  >
+>;
+type _TEST_DescribedType10 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: [123, 456, 789] }>,
+    number & {
+      [description]: '--aaa parameter' | 'constrained to 123, 456, 789.';
+    }
+  >
+>;
+type _TEST_DescribedType11 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: { min: 10 } }>,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a minimum number value of 10.';
+    }
+  >
+>;
+type _TEST_DescribedType12 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: { minExclusive: 10 } }>,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a number greater than 10.';
+    }
+  >
+>;
+type _TEST_DescribedType13 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: { max: 20 } }>,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by maximum number value of 20.';
+    }
+  >
+>;
+type _TEST_DescribedType14 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: { maxExclusive: 20 } }>,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a number less than 20.';
+    }
+  >
+>;
+type _TEST_DescribedType15 = Validate<
+  TypeTest<
+    DescribedType<number, 'aaa', { constraints: { min: 10; max: 20 } }>,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a minimum number value of 10.'
+        | 'constrained by maximum number value of 20.';
+    }
+  >
+>;
+type _TEST_DescribedType16 = Validate<
+  TypeTest<
+    DescribedType<
+      number,
+      'aaa',
+      { constraints: { minExclusive: 10; maxExclusive: 20 } }
+    >,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a number greater than 10.'
+        | 'constrained by a number less than 20.';
+    }
+  >
+>;
+type _TEST_DescribedType17 = Validate<
+  TypeTest<
+    DescribedType<
+      number,
+      'aaa',
+      { constraints: { minExclusive: 10; max: 20 } }
+    >,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a number greater than 10.'
+        | 'constrained by maximum number value of 20.';
+    }
+  >
+>;
+type _TEST_DescribedType18 = Validate<
+  TypeTest<
+    DescribedType<
+      number,
+      'aaa',
+      { constraints: { min: 10; maxExclusive: 20 } }
+    >,
+    number & {
+      [description]:
+        | '--aaa parameter'
+        | 'constrained by a minimum number value of 10.'
+        | 'constrained by a number less than 20.';
+    }
+  >
+>;
+type _TEST_DescribedType19 = Validate<
+  TypeTest<
+    DescribedType<
+      readonly string[],
+      'aaa',
+      { multiple: true; constraints: RegExp }
+    >,
+    readonly string[] & {
+      [description]:
+        | '--aaa parameter'
+        | 'can be specified multiple.'
+        | 'constrained by RegExp.';
+    }
+  >
+>;
+type _TEST_DescribedType20 = Validate<
+  TypeTest<
+    DescribedType<
+      string,
+      'aaa',
+      'abc'
+    >,
+string & {
+  [description]: '--aaa parameter' | 'as abc if omitted.'
+}>>;
+type _TEST_DescribedType21 = Validate<
+  TypeTest<
+    DescribedType<
+      number,
+      'aaa',
+      123
+    >,
+number & {
+  [description]: '--aaa parameter' | 'as 123 if omitted.'
+}>>;
 /**
  * &で結合されたオブジェクト型をまとめる。
  *
@@ -43,7 +365,9 @@ export type DescribedType<TYPE, NAME extends string, OPT> = OPT extends {
  * }
  * ```
  */
-type Normalize<T extends Record<never, never>> = { [K in keyof T]: T[K] };
+type Normalize<T> = T extends Record<never, never>
+  ? { [K in keyof T]: T[K] }
+  : never;
 
 /**
  * |で接続された型を1つのオブジェクト型に結合する。
@@ -66,8 +390,8 @@ type Combination<T> = (
   T extends unknown ? (arg: T) => unknown : never
 ) extends (arg: infer C) => unknown
   ? C extends Record<never, never>
-  ? Normalize<C>
-  : never
+    ? Normalize<C>
+    : never
   : never;
 
 /**
@@ -91,8 +415,8 @@ type OmitAsExisting<T> = Partial<Record<keyof T, never>>;
 /** それぞれのプロパティが1つだけ存在している、もしくは1つも存在していない状態にする。 */
 type Exclusive<T> =
   | {
-    [N in keyof T]: Pick<T, N> & OmitAsExisting<Omit<T, N>>;
-  }[keyof T]
+      [N in keyof T]: Pick<T, N> & OmitAsExisting<Omit<T, N>>;
+    }[keyof T]
   | OmitAsExisting<T>;
 
 /**
@@ -112,55 +436,55 @@ type OptionBase<T extends string | number | boolean> = (T extends boolean
   : T extends number
   ? { type: 'number' }
   : { readonly type?: 'string' }) & {
-    /**
-     * オプションの型。
-     *
-     * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
-     * - `number`を指定すると数値型のオプションとなる。
-     * - `boolean`を指定すると真偽値型のオプションとなる。
-     */
-    type?: 'string' | 'number' | 'boolean';
-    /**
-     * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
-     */
-    alias?: string | readonly string[];
-    /**
-     * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
-     */
-    describe?: string;
-    /**
-     * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
-     */
-    example?: string;
-    /**
-     * aloneにtrueを指定すると、単独で指定するオプションとなる。
-     *
-     * required、default、multipleとは同時に指定できない。
-     */
-    alone?: true;
-    /**
-     * requiredにtrueを指定すると、必須オプションとなる。
-     *
-     * alone、default、multipleとは同時に指定できない。
-     */
-    required?: true;
-    /**
-     * defaultに値を指定すると、省略時にその値が設定される。
-     *
-     * alone、required、multipleとは同時に指定できない。
-     */
-    default?: T extends string | number ? T : never;
-    /**
-     * multipleにtrueを指定すると、複数指定できる。
-     *
-     * alone、required、defaultとは同時に指定できない。
-     */
-    multiple?: true;
-    /**
-     * 制約。
-     */
-    constraints?: unknown;
-  };
+  /**
+   * オプションの型。
+   *
+   * - `string`を指定、もしくは省略すると文字列型のオプションとなる。
+   * - `number`を指定すると数値型のオプションとなる。
+   * - `boolean`を指定すると真偽値型のオプションとなる。
+   */
+  type?: 'string' | 'number' | 'boolean';
+  /**
+   * 別名。1文字だけの場合はprefixとして'-'が付き、2文字以上なら'--‘が付く
+   */
+  alias?: string | readonly string[];
+  /**
+   * オプションの説明。すべてのオプションの説明は[optionalist.helpString]で取得できる。
+   */
+  describe?: string;
+  /**
+   * ヘルプ文字列でパラメーターとして使用される文字列(ex. --name your_name)
+   */
+  example?: string;
+  /**
+   * aloneにtrueを指定すると、単独で指定するオプションとなる。
+   *
+   * required、default、multipleとは同時に指定できない。
+   */
+  alone?: true;
+  /**
+   * requiredにtrueを指定すると、必須オプションとなる。
+   *
+   * alone、default、multipleとは同時に指定できない。
+   */
+  required?: true;
+  /**
+   * defaultに値を指定すると、省略時にその値が設定される。
+   *
+   * alone、required、multipleとは同時に指定できない。
+   */
+  default?: T extends string | number ? T : never;
+  /**
+   * multipleにtrueを指定すると、複数指定できる。
+   *
+   * alone、required、defaultとは同時に指定できない。
+   */
+  multiple?: true;
+  /**
+   * 制約。
+   */
+  constraints?: unknown;
+};
 
 /** 文字型/数値型オプションの共通情報 */
 type OptionWithValue<T extends string | number> = OptionBase<T> &
@@ -175,75 +499,75 @@ type OptionWithValue<T extends string | number> = OptionBase<T> &
 type StringOption = OptionWithValue<string> &
   (
     | {
-      /**
-       *
-       * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
-       */
-      constraints: readonly string[];
-      /**
-       * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
-       */
-      ignoreCase?: true;
-    }
+        /**
+         *
+         * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
+         */
+        constraints: readonly string[];
+        /**
+         * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
+         */
+        ignoreCase?: true;
+      }
     | {
-      /**
-       *
-       * 正規表現の場合は文字列として指定できるパターン。ここで設定したパターンにマッチしない文字列を指定するとエラーとなる。
-       */
-      constraints: RegExp;
-      /**
-       *
-       * constraintsに正規表現を指定した場合は、正規表現のiフラグを使うこと。
-       */
-      ignoreCase?: never;
-    }
+        /**
+         *
+         * 正規表現の場合は文字列として指定できるパターン。ここで設定したパターンにマッチしない文字列を指定するとエラーとなる。
+         */
+        constraints: RegExp;
+        /**
+         *
+         * constraintsに正規表現を指定した場合は、正規表現のiフラグを使うこと。
+         */
+        ignoreCase?: never;
+      }
     | {
-      constraints?: never;
-    }
+        constraints?: never;
+      }
   );
 /** 数値型のオプション情報 */
 type NumberOption = OptionWithValue<number> &
   (
     | {
-      /**
-       *
-       * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
-       */
-      constraints: readonly number[];
-    }
+        /**
+         *
+         * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
+         */
+        constraints: readonly number[];
+      }
     | {
-      /**
-       *
-       * 最小値、最大値の指定の場合は、ここで設定した範囲外の数値を指定するとエラーになる。
-       */
-      constraints: Exclude<
-        Exclusive<{
-          /**
-           * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
-           */
-          min: number;
-          /**
-           * 数値として指定できる最小値(この値は含まない)。ここで設定した数値以下の数値が指定されるとエラーになる。
-           */
-          minExclusive: number;
-        }> &
-        Exclusive<{
-          /**
-           * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
-           */
-          max: number;
-          /**
-           * 数値として指定できる最大値(この値は含まない)。ここで設定した数値以上の数値が指定されるとエラーになる。
-           */
-          maxExclusive: number;
-        }>,
-        // それぞれ省略可能だが、すべて省略された場合はエラーとする
-        Partial<Record<string, never>>
-      >;
-    }
+        /**
+         *
+         * 最小値、最大値の指定の場合は、ここで設定した範囲外の数値を指定するとエラーになる。
+         */
+        constraints: Exclude<
+          Exclusive<{
+            /**
+             * 数値として指定できる最小値。ここで設定した数値未満の数値が指定されるとエラーになる。
+             */
+            min: number;
+            /**
+             * 数値として指定できる最小値(この値は含まない)。ここで設定した数値以下の数値が指定されるとエラーになる。
+             */
+            minExclusive: number;
+          }> &
+            Exclusive<{
+              /**
+               * 数値として指定できる最大値。ここで設定した数値より大きい数値が指定されるとエラーになる。
+               */
+              max: number;
+              /**
+               * 数値として指定できる最大値(この値は含まない)。ここで設定した数値以上の数値が指定されるとエラーになる。
+               */
+              maxExclusive: number;
+            }>,
+          // それぞれ省略可能だが、すべて省略された場合はエラーとする
+          Partial<Record<string, never>>
+        >;
+      }
     | {
-      constraints?: never;
-    }
+        constraints?: never;
+      }
   );
 
 /** 真偽値型のオプション情報 */
@@ -310,86 +634,96 @@ type OptionInformationMap = Readonly<{
 type OptionType<OptionInfo extends OptionInformation> =
   // typeの値で振り分け
   OptionInfo extends { type: 'boolean' }
-  ? // typeがbooleanなら真偽値
-  true // だが、falseにすることはできないのでtrueになる。
-  : OptionInfo extends { type: 'number' }
-  ? // typeがnumberなら数値型
-  OptionInfo extends { constraints: readonly number[] }
-  ? // constraintsが指定されていれば数値の列挙型
-  OptionInfo['constraints'][number]
-  : number
-  : OptionInfo extends { type: 'string' }
-  ? // typeがstringなら文字列型
-  OptionInfo extends { constraints: readonly string[] }
-  ? // constraintsが指定されていれば文字列の列挙型
-  OptionInfo['constraints'][number]
-  : string
-  : OptionInfo extends { type: unknown }
-  ? // typeにその他の値が指定されていることはない
-  never
-  : // type省略時にも文字列型
-  OptionInfo extends { constraints: readonly string[] }
-  ? // constraintsが指定されていれば文字列の列挙型
-  OptionInfo['constraints'][number]
-  : // objectが指定されていれば文字列型
-  OptionInfo extends Record<string | number | symbol, unknown>
-  ? string
-  : // 文字列が指定されていれば文字列型
-  OptionInfo extends string
-  ? string
-  : // 数値が指定されていれば数値型
-  OptionInfo extends number
-  ? number
-  : // trueが指定されていれば真偽値
-  OptionInfo extends true
-  ? true
-  : // それ以外は指定されることはないはずだが念の為never
-  never;
+    ? // typeがbooleanなら真偽値
+      true // だが、falseにすることはできないのでtrueになる。
+    : OptionInfo extends { type: 'number' }
+    ? // typeがnumberなら数値型
+      OptionInfo extends { constraints: readonly number[] }
+      ? // constraintsが指定されていれば数値の列挙型
+        OptionInfo['constraints'][number]
+      : number
+    : OptionInfo extends { type: 'string' }
+    ? // typeがstringなら文字列型
+      OptionInfo extends { constraints: readonly string[] }
+      ? // constraintsが指定されていれば文字列の列挙型
+        OptionInfo['constraints'][number]
+      : string
+    : OptionInfo extends { type: unknown }
+    ? // typeにその他の値が指定されていることはない
+      never
+    : // type省略時にも文字列型
+    OptionInfo extends { constraints: readonly string[] }
+    ? // constraintsが指定されていれば文字列の列挙型
+      OptionInfo['constraints'][number]
+    : // objectが指定されていれば文字列型
+    OptionInfo extends Record<string | number | symbol, unknown>
+    ? string
+    : // 文字列が指定されていれば文字列型
+    OptionInfo extends string
+    ? string
+    : // 数値が指定されていれば数値型
+    OptionInfo extends number
+    ? number
+    : // trueが指定されていれば真偽値
+    OptionInfo extends true
+    ? true
+    : // それ以外は指定されることはないはずだが念の為never
+      never;
 
 /**
  * 他のオプションと一緒に使用するオプションで指定されるプロパティ。
  */
 type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
   | {
-    [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
-    ? N extends string
-    ? // aloneが指定されているものは存在しないプロパティ
+      [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
+        ? N extends string
+          ? // aloneが指定されているものは存在しないプロパティ
 
-    OPTMAP[N] extends { alone: true }
-    ? { readonly [K in N]?: never }
-    : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
-    OPTMAP[N] extends { required: true } | { default: OptType }
-    ? { readonly [K in N]: DescribedType<OptType, N, OPTMAP[N]> }
-    : // multipleが指定されているものは配列型
-    OPTMAP[N] extends { multiple: true }
-    ? {
-      readonly [K in N]: DescribedType<readonly OptType[], N, OPTMAP[N]>;
-    }
-    : // それ以外は存在していない可能性のあるプロパティ
-    { readonly [K in N]?: DescribedType<OptType, N, OPTMAP[N]> }
-    : // プロパティキーが文字列以外の場合は除外
-    never
-    : never;
-  }[keyof OPTMAP]
+            OPTMAP[N] extends { alone: true }
+            ? { readonly [K in N]?: never }
+            : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
+            OPTMAP[N] extends { required: true } | { default: OptType } | string | number
+            ? { readonly [K in N]: DescribedType<OptType, N, OPTMAP[N]> }
+            : // multipleが指定されているものは配列型
+            OPTMAP[N] extends { multiple: true }
+            ? {
+                readonly [K in N]: DescribedType<
+                  readonly OptType[],
+                  N,
+                  OPTMAP[N]
+                >;
+              }
+            : // それ以外は存在していない可能性のあるプロパティ
+              { readonly [K in N]?: DescribedType<OptType, N, OPTMAP[N]> }
+          : // プロパティキーが文字列以外の場合は除外
+            never
+        : never;
+    }[keyof OPTMAP]
   | {
-    readonly [unnamed]: readonly string[];
-    readonly [helpString]: string;
-  }
+      readonly [unnamed]: readonly string[];
+      readonly [helpString]: string;
+    }
 >;
 /**
  * 単独で指定されるオプションのプロパティ
  */
 type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
-  [N in keyof OPTMAP as N extends string ? OPTMAP[N] extends { alone: true }
-  ? N
-  : never : never]: N extends string ? Normalize<
-    { readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, N, OPTMAP[N]> } & {
-      readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
-    } & {
-      readonly [unnamed]?: never;
-      readonly [helpString]: string;
-    }
-  > : never;
+  [N in keyof OPTMAP as N extends string
+    ? OPTMAP[N] extends { alone: true }
+      ? N
+      : never
+    : never]: N extends string
+    ? Normalize<
+        {
+          readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, N, OPTMAP[N]>;
+        } & {
+          readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
+        } & {
+          readonly [unnamed]?: never;
+          readonly [helpString]: string;
+        }
+      >
+    : never;
 }>;
 
 /**
@@ -502,10 +836,10 @@ function normalizeOptInfo(
   return typeof info === 'string'
     ? { type: 'string', default: info }
     : typeof info === 'number'
-      ? { type: 'number', default: info }
-      : info === true
-        ? { type: 'boolean' }
-        : info;
+    ? { type: 'number', default: info }
+    : info === true
+    ? { type: 'boolean' }
+    : info;
 }
 
 /**
@@ -729,8 +1063,9 @@ function parseOption(
       }
       const value = +r.value;
       if (!isFinite(value)) {
-        return usage`${arg} needs a number parameter as the ${example(info)}: ${r.value
-          }`;
+        return usage`${arg} needs a number parameter as the ${example(info)}: ${
+          r.value
+        }`;
       }
       if (info.constraints) {
         if (Array.isArray(info.constraints)) {
@@ -789,9 +1124,9 @@ function parseOption(
         } else {
           const [constraints, findValue] = info.ignoreCase
             ? [
-              info.constraints.map(s => s.toUpperCase()),
-              r.value.toUpperCase(),
-            ]
+                info.constraints.map(s => s.toUpperCase()),
+                r.value.toUpperCase(),
+              ]
             : [info.constraints, r.value];
           const index = constraints.indexOf(findValue);
           if (index < 0) {
@@ -977,8 +1312,9 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const requiredList: string[] = [];
   const optionalList: string[] = [];
   const aloneList: string[] = [];
-  for (const [name, info] of Object.entries(optMap)) {
-    assert(typeof info === 'object');
+  for (const [name, _info] of Object.entries(optMap)) {
+    const info = normalizeOptInfo(_info);
+    assert(typeof info === 'object', `${name} is not object`);
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
     );
@@ -995,8 +1331,8 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     ...aloneList.map(
       option =>
         `  npx ${
-        // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
-        processName ?? process.argv[1]
+          // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
+          processName ?? process.argv[1]
         } ${option}`,
     ),
   );
@@ -1016,7 +1352,8 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     '',
     'Options:',
   );
-  for (const [name, info] of Object.entries(optMap)) {
+  for (const [name, _info] of Object.entries(optMap)) {
+    const info = normalizeOptInfo(_info);
     const optNames = [name];
     assert(typeof info === 'object');
     if (info.alias) {
@@ -1027,7 +1364,8 @@ function makeHelpString<OptMap extends OptionInformationMap>(
       }
     }
     help.push(
-      `  ${optNames.map(hyphenate).join(', ')}${info.type === 'boolean' ? '' : ' ' + example(info)
+      `  ${optNames.map(hyphenate).join(', ')}${
+        info.type === 'boolean' ? '' : ' ' + example(info)
       }`,
       ...indent(info.describe, '    '),
     );

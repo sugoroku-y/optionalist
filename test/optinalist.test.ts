@@ -514,8 +514,8 @@ test('invalid optMap', () => {
 });
 
 test('pattern constraints', () => {
-  expect(() =>
-    parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']),
+  expect(
+    () => parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']).a,
   ).toThrow('-a does not match /^\\w+=/: aaabbb');
 });
 
@@ -529,11 +529,12 @@ test('minExclusive', () => {
     a: 1.1,
     [unnamed]: [],
   });
-  expect(() =>
-    parse({ a: { type: 'number', constraints: { minExclusive: 1 } } }, [
-      '-a',
-      '1',
-    ]),
+  expect(
+    () =>
+      parse(
+        { a: { type: 'number', constraints: { minExclusive: 1 } } } as const,
+        ['-a', '1'],
+      ).a,
   ).toThrow('-a must be greater than 1.');
 });
 
@@ -547,11 +548,12 @@ test('maxExclusive', () => {
     a: 9.9,
     [unnamed]: [],
   });
-  expect(() =>
-    parse({ a: { type: 'number', constraints: { maxExclusive: 10 } } }, [
-      '-a',
-      '10',
-    ]),
+  expect(
+    () =>
+      parse(
+        { a: { type: 'number', constraints: { maxExclusive: 10 } } } as const,
+        ['-a', '10'],
+      ).a,
   ).toThrow('-a must be less than 10.');
 });
 test('max&maxExclusive', () => {
@@ -615,125 +617,167 @@ describe('type check Options', () => {
     rrr: 'rrr',
     sss: 123,
     ttt: true,
+    uuu: {
+      describe: 'uuu',
+      multiple: true,
+      constraints: ['uuu', 'vvv', 'www'],
+    },
+    vvv: {
+      describe: 'vvv',
+      multiple: true,
+      constraints: /^[uvw]{3}$/,
+    },
+    www: {
+      type: 'number',
+      describe: 'www',
+      multiple: true,
+      constraints: [123, 456, 789],
+    },
+    xxx: {
+      type: 'number',
+      describe: 'xxx',
+      multiple: true,
+      constraints: {
+        min: 10,
+        maxEclusive: 100,
+      },
+    },
   } as const;
   test('alone (string)', () => {
     const options = parse(optMap, ['--ddd', 'ddd']);
     assertToBeDefined(options.ddd);
-    expect(options).toEqualType<{
-      // dddが有効な場合はdddとhelpStringだけ使える
-      readonly ddd: DescribedType<string, 'ddd', { describe: 'ddd' }>;
-      readonly [helpString]: string;
-      // その他のオプションは使えない
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
-      readonly eee?: never;
-      readonly fff?: never;
-      readonly ggg?: never;
-      readonly hhh?: never;
-      readonly iii?: never;
-      readonly jjj?: never;
-      readonly kkk?: never;
-      readonly lll?: never;
-      readonly mmm?: never;
-      readonly nnn?: never;
-      readonly ooo?: never;
-      readonly ppp?: never;
-      readonly qqq?: never;
-      readonly rrr?: never;
-      readonly sss?: never;
-      readonly ttt?: never;
-      readonly [unnamed]?: never;
-    }>();
+    // dddが有効な場合はdddとhelpStringだけ使える
+    expect(options.ddd).toEqualType<
+      DescribedType<string, 'ddd', typeof optMap['ddd']>
+    >();
+    expect(options[helpString]).toEqualType<string>();
+    // その他のオプションは使えない
+    expect(options.aaa).toEqualType<undefined>();
+    expect(options.bbb).toEqualType<undefined>();
+    expect(options.ccc).toEqualType<undefined>();
+    expect(options.eee).toEqualType<undefined>();
+    expect(options.fff).toEqualType<undefined>();
+    expect(options.ggg).toEqualType<undefined>();
+    expect(options.hhh).toEqualType<undefined>();
+    expect(options.iii).toEqualType<undefined>();
+    expect(options.jjj).toEqualType<undefined>();
+    expect(options.kkk).toEqualType<undefined>();
+    expect(options.lll).toEqualType<undefined>();
+    expect(options.mmm).toEqualType<undefined>();
+    expect(options.nnn).toEqualType<undefined>();
+    expect(options.ooo).toEqualType<undefined>();
+    expect(options.ppp).toEqualType<undefined>();
+    expect(options.qqq).toEqualType<undefined>();
+    expect(options.rrr).toEqualType<undefined>();
+    expect(options.sss).toEqualType<undefined>();
+    expect(options.ttt).toEqualType<undefined>();
+    expect(options.uuu).toEqualType<undefined>();
+    expect(options.vvv).toEqualType<undefined>();
+    expect(options.www).toEqualType<undefined>();
+    expect(options.xxx).toEqualType<undefined>();
+    expect(options[unnamed]).toEqualType<undefined>();
   });
   test('alone number', () => {
     const options = parse(optMap, ['--hhh', '0']);
     assertToBeDefined(options.hhh);
-    expect(options).toEqualType<{
-      // hhhが有効な場合はhhhとhelpStringだけ使える
-      readonly hhh: DescribedType<number, 'hhh', { describe: 'hhh' }>;
-      readonly [helpString]: string;
-      // その他のオプションは使えない
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
-      readonly ddd?: never;
-      readonly eee?: never;
-      readonly fff?: never;
-      readonly ggg?: never;
-      readonly iii?: never;
-      readonly jjj?: never;
-      readonly kkk?: never;
-      readonly lll?: never;
-      readonly mmm?: never;
-      readonly nnn?: never;
-      readonly ooo?: never;
-      readonly ppp?: never;
-      readonly qqq?: never;
-      readonly rrr?: never;
-      readonly sss?: never;
-      readonly ttt?: never;
-      readonly [unnamed]?: never;
-    }>();
+    // hhhが有効な場合はhhhとhelpStringだけ使える
+    expect(options.hhh).toEqualType<
+      DescribedType<number, 'hhh', typeof optMap['hhh']>
+    >();
+    expect(options[helpString]).toEqualType<string>();
+    // その他のオプションは使えない
+    expect(options.aaa).toEqualType<undefined>();
+    expect(options.bbb).toEqualType<undefined>();
+    expect(options.ccc).toEqualType<undefined>();
+    expect(options.ddd).toEqualType<undefined>();
+    expect(options.eee).toEqualType<undefined>();
+    expect(options.fff).toEqualType<undefined>();
+    expect(options.ggg).toEqualType<undefined>();
+    expect(options.iii).toEqualType<undefined>();
+    expect(options.jjj).toEqualType<undefined>();
+    expect(options.kkk).toEqualType<undefined>();
+    expect(options.lll).toEqualType<undefined>();
+    expect(options.mmm).toEqualType<undefined>();
+    expect(options.nnn).toEqualType<undefined>();
+    expect(options.ooo).toEqualType<undefined>();
+    expect(options.ppp).toEqualType<undefined>();
+    expect(options.qqq).toEqualType<undefined>();
+    expect(options.rrr).toEqualType<undefined>();
+    expect(options.sss).toEqualType<undefined>();
+    expect(options.ttt).toEqualType<undefined>();
+    expect(options.uuu).toEqualType<undefined>();
+    expect(options.vvv).toEqualType<undefined>();
+    expect(options.www).toEqualType<undefined>();
+    expect(options.xxx).toEqualType<undefined>();
+    expect(options[unnamed]).toEqualType<undefined>();
   });
   test('alone boolean', () => {
     const options = parse(optMap, ['--jjj']);
     assertToBeDefined(options.jjj);
-    expect(options).toEqualType<{
-      // jjjが有効な場合はjjjとhelpStringだけ使える
-      readonly jjj: DescribedType<true, 'jjj', { describe: 'jjj' }>;
-      readonly [helpString]: string;
-      // その他のオプションは使えない
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
-      readonly ddd?: never;
-      readonly eee?: never;
-      readonly fff?: never;
-      readonly ggg?: never;
-      readonly hhh?: never;
-      readonly iii?: never;
-      readonly kkk?: never;
-      readonly lll?: never;
-      readonly mmm?: never;
-      readonly nnn?: never;
-      readonly ooo?: never;
-      readonly ppp?: never;
-      readonly qqq?: never;
-      readonly rrr?: never;
-      readonly sss?: never;
-      readonly ttt?: never;
-      readonly [unnamed]?: never;
-    }>();
+    // jjjが有効な場合はjjjとhelpStringだけ使える
+    expect(options.jjj).toEqualType<
+      DescribedType<true, 'jjj', typeof optMap['jjj']>
+    >();
+    expect(options[helpString]).toEqualType<string>();
+    // その他のオプションは使えない
+    expect(options.aaa).toEqualType<undefined>();
+    expect(options.bbb).toEqualType<undefined>();
+    expect(options.ccc).toEqualType<undefined>();
+    expect(options.ddd).toEqualType<undefined>();
+    expect(options.eee).toEqualType<undefined>();
+    expect(options.fff).toEqualType<undefined>();
+    expect(options.ggg).toEqualType<undefined>();
+    expect(options.hhh).toEqualType<undefined>();
+    expect(options.iii).toEqualType<undefined>();
+    expect(options.kkk).toEqualType<undefined>();
+    expect(options.lll).toEqualType<undefined>();
+    expect(options.mmm).toEqualType<undefined>();
+    expect(options.nnn).toEqualType<undefined>();
+    expect(options.ooo).toEqualType<undefined>();
+    expect(options.ppp).toEqualType<undefined>();
+    expect(options.qqq).toEqualType<undefined>();
+    expect(options.rrr).toEqualType<undefined>();
+    expect(options.sss).toEqualType<undefined>();
+    expect(options.ttt).toEqualType<undefined>();
+    expect(options.uuu).toEqualType<undefined>();
+    expect(options.vvv).toEqualType<undefined>();
+    expect(options.www).toEqualType<undefined>();
+    expect(options.xxx).toEqualType<undefined>();
+    expect(options[unnamed]).toEqualType<undefined>();
   });
   test('alone string', () => {
     const options = parse(optMap, ['--nnn', 'nnn']);
     assertToBeDefined(options.nnn);
-    expect(options).toEqualType<{
-      // nnnが有効な場合はnnnとhelpStringだけ使える
-      readonly nnn: DescribedType<string, 'nnn', { describe: 'nnn' }>;
-      readonly [helpString]: string;
-      readonly aaa?: never;
-      readonly bbb?: never;
-      readonly ccc?: never;
-      readonly ddd?: never;
-      readonly eee?: never;
-      readonly fff?: never;
-      readonly ggg?: never;
-      readonly hhh?: never;
-      readonly iii?: never;
-      readonly jjj?: never;
-      readonly kkk?: never;
-      readonly lll?: never;
-      readonly mmm?: never;
-      readonly ooo?: never;
-      readonly ppp?: never;
-      readonly qqq?: never;
-      readonly rrr?: never;
-      readonly sss?: never;
-      readonly ttt?: never;
-      readonly [unnamed]?: never;
-    }>();
+    // nnnが有効な場合はnnnとhelpStringだけ使える
+    expect(options.nnn).toEqualType<
+      DescribedType<string, 'nnn', typeof optMap['nnn']>
+    >();
+    expect(options[helpString]).toEqualType<string>();
+    // その他のオプションは使えない
+    expect(options.aaa).toEqualType<undefined>();
+    expect(options.bbb).toEqualType<undefined>();
+    expect(options.ccc).toEqualType<undefined>();
+    expect(options.ddd).toEqualType<undefined>();
+    expect(options.eee).toEqualType<undefined>();
+    expect(options.fff).toEqualType<undefined>();
+    expect(options.ggg).toEqualType<undefined>();
+    expect(options.hhh).toEqualType<undefined>();
+    expect(options.iii).toEqualType<undefined>();
+    expect(options.jjj).toEqualType<undefined>();
+    expect(options.kkk).toEqualType<undefined>();
+    expect(options.lll).toEqualType<undefined>();
+    expect(options.mmm).toEqualType<undefined>();
+    expect(options.ooo).toEqualType<undefined>();
+    expect(options.ppp).toEqualType<undefined>();
+    expect(options.qqq).toEqualType<undefined>();
+    expect(options.rrr).toEqualType<undefined>();
+    expect(options.sss).toEqualType<undefined>();
+    expect(options.ttt).toEqualType<undefined>();
+    expect(options.uuu).toEqualType<undefined>();
+    expect(options.vvv).toEqualType<undefined>();
+    expect(options.www).toEqualType<undefined>();
+    expect(options.xxx).toEqualType<undefined>();
+    expect(options[unnamed]).toEqualType<undefined>();
   });
   test('not alone', () => {
     const options = parse(optMap, [
@@ -749,33 +793,80 @@ describe('type check Options', () => {
     assertToBeUndefined(options.hhh);
     assertToBeUndefined(options.jjj);
     assertToBeUndefined(options.nnn);
-    expect(options).toEqualType<{
-      // aloneなオプションはどれも使えない。
-      readonly ddd?: never;
-      readonly hhh?: never;
-      readonly jjj?: never;
-      readonly nnn?: never;
-      // aloneでないオプションすべてが使える。
-      readonly aaa?: DescribedType<string, 'aaa', { describe: 'aaa' }>;
-      readonly bbb: DescribedType<string, 'bbb', { describe: 'bbb' }>;
-      readonly ccc: DescribedType<string, 'ccc', { describe: 'ccc' }>;
-      readonly eee?: DescribedType<number, 'eee', { describe: 'eee' }>;
-      readonly fff: DescribedType<number, 'fff', { describe: 'fff' }>;
-      readonly ggg: DescribedType<number, 'ggg', { describe: 'ggg' }>;
-      readonly iii?: DescribedType<true, 'iii', { describe: 'iii' }>;
-      readonly kkk?: DescribedType<string, 'kkk', { describe: 'kkk' }>;
-      readonly lll: DescribedType<string, 'lll', { describe: 'lll' }>;
-      readonly mmm: DescribedType<string, 'mmm', { describe: 'mmm' }>;
-      readonly ooo: DescribedType<readonly string[], 'ooo', { describe: 'ooo' }>;
-      readonly ppp: DescribedType<readonly number[], 'ppp', { describe: 'ppp' }>;
-      readonly qqq: DescribedType<readonly string[], 'qqq', { describe: 'qqq' }>;
-      readonly rrr?: string;
-      readonly sss?: number;
-      readonly ttt?: true;
-      readonly [unnamed]: readonly string[];
-      // helpStringももちろん使える。
-      readonly [helpString]: string;
-    }>();
+    // aloneなオプションはどれも使えない。
+    expect(options.ddd).toEqualType<undefined>();
+    expect(options.hhh).toEqualType<undefined>();
+    expect(options.jjj).toEqualType<undefined>();
+    expect(options.nnn).toEqualType<undefined>();
+    // aloneでないオプションすべてが使える。
+    expect(options.aaa).toEqualType<
+      DescribedType<string, 'aaa', typeof optMap['aaa']> | undefined
+    >();
+    expect(options.bbb).toEqualType<
+      DescribedType<string, 'bbb', typeof optMap['bbb']>
+    >();
+    expect(options.ccc).toEqualType<
+      DescribedType<string, 'ccc', typeof optMap['ccc']>
+    >();
+    expect(options.eee).toEqualType<
+      DescribedType<number, 'eee', typeof optMap['eee']> | undefined
+    >();
+    expect(options.fff).toEqualType<
+      DescribedType<number, 'fff', typeof optMap['fff']>
+    >();
+    expect(options.ggg).toEqualType<
+      DescribedType<number, 'ggg', typeof optMap['ggg']>
+    >();
+    expect(options.iii).toEqualType<
+      DescribedType<true, 'iii', typeof optMap['iii']> | undefined
+    >();
+    expect(options.kkk).toEqualType<
+      DescribedType<string, 'kkk', typeof optMap['kkk']> | undefined
+    >();
+    expect(options.lll).toEqualType<
+      DescribedType<string, 'lll', typeof optMap['lll']>
+    >();
+    expect(options.mmm).toEqualType<
+      DescribedType<string, 'mmm', typeof optMap['mmm']>
+    >();
+    expect(options.ooo).toEqualType<
+      DescribedType<readonly string[], 'ooo', typeof optMap['ooo']>
+    >();
+    expect(options.ppp).toEqualType<
+      DescribedType<readonly number[], 'ppp', typeof optMap['ppp']>
+    >();
+    expect(options.qqq).toEqualType<
+      DescribedType<readonly string[], 'qqq', typeof optMap['qqq']>
+    >();
+    // 簡易指定なオプションは説明文がつかない
+    expect(options.rrr).toEqualType<
+      DescribedType<string, 'rrr', typeof optMap['rrr']>
+    >();
+    expect(options.sss).toEqualType<
+      DescribedType<number, 'sss', typeof optMap['sss']>
+    >();
+    expect(options.ttt).toEqualType<
+      DescribedType<true, 'ttt', typeof optMap['ttt']> | undefined
+    >();
+    expect(options.uuu).toEqualType<
+      DescribedType<
+        readonly ('uuu' | 'vvv' | 'www')[],
+        'uuu',
+        typeof optMap['uuu']
+      >
+    >();
+    expect(options.vvv).toEqualType<
+      DescribedType<readonly string[], 'vvv', typeof optMap['vvv']>
+    >();
+    expect(options.www).toEqualType<
+      DescribedType<readonly (123 | 456 | 789)[], 'www', typeof optMap['www']>
+    >();
+    expect(options.xxx).toEqualType<
+      DescribedType<readonly number[], 'xxx', typeof optMap['xxx']>
+    >();
+    expect(options[unnamed]).toEqualType<readonly string[]>();
+    // helpStringももちろん使える。
+    expect(options[helpString]).toEqualType<string>();
   });
 });
 
