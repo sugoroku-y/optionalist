@@ -2,7 +2,7 @@ import * as path from 'path';
 
 function loadConfigfile(_:string):void{}
 function initializeProject(): void {}
-function executeFile(_:string):void {
+function executeFile(_:string, _output: string):void {
   
 }
 function watch(_:string[], _callback: (filename: string) => void): never {
@@ -193,11 +193,11 @@ options;
 loadConfigfile(options.config);
 
 for (const file of options[optionalist.unnamed]) {
-  executeFile(file);
+  executeFile(file, options.output);
 }
 
 if (options.watch) {
   const list = options[optionalist.unnamed].slice(0);
-  watch(list, file => executeFile(file));
+  watch(list, file => executeFile(file, options.output));
 }
 // ```
