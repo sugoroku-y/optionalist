@@ -478,6 +478,11 @@ test('max only', () => {
   ).toEqual({ a: 10, [unnamed]: [] });
 });
 
+test('multiple empty', () => {
+  expect(
+    parse({ a: { multiple: true } }, []),
+  ).toEqual({ a: [], [unnamed]: [] });
+});
 test('multiple string', () => {
   expect(
     parse({ a: { multiple: true } }, ['-a', 'abc', '-a', 'def', '-a', 'ghi']),
