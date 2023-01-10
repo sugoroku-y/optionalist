@@ -120,7 +120,6 @@ class CommandPrompt {
 }
 
 describe('sample package test', () => {
-  const prompt = new CommandPrompt();
   const helpString = (...args: [TemplateStringsArray, ...unknown[]]) => `${
     args[0].length > 1 || args[0][0] ? `${templateLiteral(...args)}\n\n` : ''
   }Version: sample 0.0.1
@@ -149,23 +148,25 @@ Options:
 `;
 
   beforeAll(async () => {
-    prompt.cwd = resolve(__dirname, '..');
     jest.setTimeout(SETTIMEOUT_LIMIT);
-  }, SETTIMEOUT_LIMIT);
+  });
 
-  test('show help', async () => {
+  test.concurrent('show help', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --help`;
     expect(prompt.stdout).toBe(`${helpString``}\n`);
     expect(prompt.stderr).toBe('');
   });
 
-  test('initialize', async () => {
+  test.concurrent('initialize', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --init`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
-  test('show help, initialize', async () => {
+  test.concurrent('show help, initialize', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --help --init`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -173,7 +174,8 @@ Options:
     expect(prompt.stderr).toBe(helpString`--help must be specified alone.`);
   });
 
-  test('show help, script_filename', async () => {
+  test.concurrent('show help, script_filename', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --help script_filename`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -181,7 +183,8 @@ Options:
     expect(prompt.stderr).toBe(helpString`--help must be specified alone.`);
   });
 
-  test('no params', async () => {
+  test.concurrent('no params', async () => {
+    const prompt = new CommandPrompt();
     await expect(prompt.exec`npx ts-node sample/`).rejects.toThrow(
       'FAILED(exit code: 1)',
     );
@@ -189,7 +192,8 @@ Options:
     expect(prompt.stderr).toBe(helpString`--output required`);
   });
 
-  test('no output filename', async () => {
+  test.concurrent('no output filename', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --output`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -199,19 +203,22 @@ Options:
     );
   });
 
-  test('specify output', async () => {
+  test.concurrent('specify output', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
-  test('specify output,config', async () => {
+  test.concurrent('specify output,config', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt --config config_file`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
-  test('specify output,config without config file', async () => {
+  test.concurrent('specify output,config without config file', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --output output.txt --config`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -221,13 +228,15 @@ Options:
     );
   });
 
-  test('specify output,timeout', async () => {
+  test.concurrent('specify output,timeout', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt --timeout 5000`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
-  test('specify output,timeout without timeout', async () => {
+  test.concurrent('specify output,timeout without timeout', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --output output.txt --timeout`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -237,7 +246,8 @@ Options:
     );
   });
 
-  test('specify output,timeout with NaN', async () => {
+  test.concurrent('specify output,timeout with NaN', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --output output.txt --timeout NotANumber`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -247,7 +257,8 @@ Options:
     );
   });
 
-  test('unknown option', async () => {
+  test.concurrent('unknown option', async () => {
+    const prompt = new CommandPrompt();
     await expect(
       prompt.exec`npx ts-node sample/ --unknown`,
     ).rejects.toThrow('FAILED(exit code: 1)');
@@ -255,16 +266,22 @@ Options:
     expect(prompt.stderr).toBe(helpString`unknown options: --unknown`);
   });
 
-  test('specify output,watch', async () => {
+  test.concurrent('specify output,watch', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt --watch`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
   });
 
-  test('specify output, script_filename', async () => {
+  test.concurrent('specify output, script_filename', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt script_filename`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
+  });
+
+  test.concurrent('specify output, --unknown', async () => {
+    const prompt = new CommandPrompt();
     await prompt.exec`npx ts-node sample/ --output output.txt -- --unknown`;
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe('');
