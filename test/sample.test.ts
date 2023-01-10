@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 const SETTIMEOUT_LIMIT = 0x7fffffff; // max 32-bit signed integer
 
 function templateLiteral(...a: [TemplateStringsArray, ...unknown[]]): string {
-  return a[0].reduce((r, e, i) => `${r}${a[i]}${e}`);
+  return a[0].reduce((r, e, i) => r + String(a[i]) + e);
 }
 
 class CommandStream {
@@ -56,12 +56,12 @@ class CommandPrompt {
     this.#err.clear();
     const [_command, ...parameters] = (function* () {
       // matchAllが使えない環境向けに自前で同等の処理
-      for (const match of function*(str, re) {
+      for (const match of (function* (str, re) {
         let match;
-        while (!!(match = re.exec(str))) {
+        while ((match = re.exec(str))) {
           yield match;
         }
-      }(commandline, /(?:"[^"]*(?:\\.[^"]*)*"|\S+)+/g)) {
+      })(commandline, /(?:"[^"]*(?:\\.[^"]*)*"|\S+)+/g)) {
         yield match[0].replace(
           /"([^"]*(?:\\.[^"]*)*)"|\S+/gy,
           (whole, quoted: string | undefined) =>
@@ -111,7 +111,7 @@ class CommandPrompt {
           if (code === 0) {
             resolve();
           } else {
-            reject(new Error(`FAILED(exit code: ${code})`));
+            reject(new Error(`FAILED(exit code: ${code ?? 0})`));
           }
         })
         .on('error', err => reject(err));
@@ -147,7 +147,7 @@ Options:
     Specify the script filename(s) to execute.
 `;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     jest.setTimeout(SETTIMEOUT_LIMIT);
   });
 
@@ -194,9 +194,9 @@ Options:
 
   test.concurrent('no output filename', async () => {
     const prompt = new CommandPrompt();
-    await expect(
-      prompt.exec`npx ts-node sample/ --output`,
-    ).rejects.toThrow('FAILED(exit code: 1)');
+    await expect(prompt.exec`npx ts-node sample/ --output`).rejects.toThrow(
+      'FAILED(exit code: 1)',
+    );
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(
       helpString`--output needs a parameter as the output_filename`,
@@ -259,9 +259,9 @@ Options:
 
   test.concurrent('unknown option', async () => {
     const prompt = new CommandPrompt();
-    await expect(
-      prompt.exec`npx ts-node sample/ --unknown`,
-    ).rejects.toThrow('FAILED(exit code: 1)');
+    await expect(prompt.exec`npx ts-node sample/ --unknown`).rejects.toThrow(
+      'FAILED(exit code: 1)',
+    );
     expect(prompt.stdout).toBe('');
     expect(prompt.stderr).toBe(helpString`unknown options: --unknown`);
   });

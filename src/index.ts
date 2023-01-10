@@ -31,7 +31,7 @@ type Join<A extends readonly (string | number)[]> = A extends [
     : never
   : never;
 
-type RagneConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
+type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
   ? [
       ...(CONSTRAINTS extends { min: infer MIN }
         ? MIN extends number
@@ -60,7 +60,7 @@ type RagneConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
           : []
         : []),
     ]
-  : {};
+  : never;
 
 /** 説明つきの型 */
 export type DescribedType<TYPE, NAME, OPT> = NAME extends string
@@ -114,9 +114,9 @@ export type DescribedType<TYPE, NAME, OPT> = NAME extends string
               : []
             : CONSTRAINTS extends Record<string, number>
             ? TYPE extends number
-              ? RagneConstraints<CONSTRAINTS>
+              ? RangeConstraints<CONSTRAINTS>
               : TYPE extends readonly number[]
-              ? RagneConstraints<CONSTRAINTS>
+              ? RangeConstraints<CONSTRAINTS>
               : []
             : []
           : []),
@@ -171,7 +171,7 @@ type _TEST_Join3 = Validate<
 
 type _TEST_DescribedType1 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', {}>,
+    DescribedType<string, 'aaa', Record<string, never>>,
     string & { [description]: ['--aaa parameter'] }
   >
 >;
@@ -817,7 +817,7 @@ class CommandLineParsingError extends Error {
  */
 function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
   throw new CommandLineParsingError(
-    args[0].reduce((r, e, i) => `${r}${args[i]}${e}`),
+    args[0].reduce((r, e, i) => r + String(args[i]) + e),
   );
 }
 
@@ -932,14 +932,14 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
           info.default === undefined,
           `The default value of the ${hyphenate(
             name,
-          )} parameter cannot be specified.: ${info.default}`,
+          )} parameter cannot be specified.: ${String(info.default)}`,
         );
         break;
       default:
         // 他のタイプを指定するとTypeScriptのエラーになるはずだが念の為
         checkNever(
           info,
-          `unknown type: ${type} for the ${hyphenate(name)} parameter`,
+          `unknown type: ${String(type)} for the ${hyphenate(name)} parameter`,
         );
     }
     if (info.alone) {

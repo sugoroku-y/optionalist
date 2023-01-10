@@ -479,9 +479,10 @@ test('max only', () => {
 });
 
 test('multiple empty', () => {
-  expect(
-    parse({ a: { multiple: true } }, []),
-  ).toEqual({ a: [], [unnamed]: [] });
+  expect(parse({ a: { multiple: true } }, [])).toEqual({
+    a: [],
+    [unnamed]: [],
+  });
 });
 test('multiple string', () => {
   expect(
@@ -644,7 +645,7 @@ describe('type check Options', () => {
       multiple: true,
       constraints: {
         min: 10,
-        maxEclusive: 100,
+        maxExclusive: 100,
       },
     },
   } as const;
