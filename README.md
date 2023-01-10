@@ -197,12 +197,12 @@ options;
 loadConfigfile(options.config);
 
 for (const file of options[optionalist.unnamed]) {
-  executeFile(file);
+  executeFile(file, options.output);
 }
 
 if (options.watch) {
   const list = options[optionalist.unnamed].slice(0);
-  watch(list, file => executeFile(file));
+  watch(list, file => executeFile(file, options.output));
 }
 ```
 
@@ -378,10 +378,11 @@ VS Codeなどの型情報が表示されるエディターを使用している�
 ```ts
 const options = optionalist.parse({
   // ...
-  config: {
-    default: path.resolve('config.json'),
-    describe: 'Specify the configuration file for your project.',
-    example: 'config_filename',
+  output: {
+    type: 'string',
+    required: true,
+    describe: 'Specify the filename to output.',
+    example: 'output_filename',
   },
   // ...
 });
@@ -390,17 +391,20 @@ const options = optionalist.parse({
 のように記述していれば
 
 ```ts
-loadConfigfile(options.config);
+  executeFile(file, options.output);
 ```
 
-と記述したときに、`config`にマウスカーソルを合わせれば、
+と記述したときに、`output`にマウスカーソルを合わせれば、
 
 ```ts
-(property) config: string & {
-    [description]: "--config config_filename: Specify the configuration file for your project.";
+(property) output: string & {
+    [description]: ["--output output_filename: Specify the filename to output.", "must be specified always."];
 }
 ```
 
 のように表示されます。
+
+実際にコマンドラインパラメーターとして指定する際の文字列 `--output output_filename`
+ および説明 `Specify the filename to output.` と、`required`が指定されているので必須パラメーターであることを示す `must be specified always.` が表示されています。同様に`alone`や`default`などを指定した場合も説明が追加されます。
 
 ただし実際にこの説明文をプロパティとして保持しているわけではないため、アクセスできないことに注意してください。

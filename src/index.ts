@@ -31,109 +31,131 @@ type Join<A extends readonly (string | number)[]> = A extends [
     : never
   : never;
 
-type RagneConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
-  ? {
-      [description]:
-        | (CONSTRAINTS extends { min: infer MIN }
-            ? MIN extends number
-              ? number extends MIN
-                ? never
-                : `constrained by a minimum number value of ${MIN}.`
-              : never
-            : CONSTRAINTS extends { minExclusive: infer MIN }
-            ? MIN extends number
-              ? number extends MIN
-                ? never
-                : `constrained by a number greater than ${MIN}.`
-              : never
-            : never)
-        | (CONSTRAINTS extends { max: infer MAX }
-            ? MAX extends number
-              ? number extends MAX
-                ? never
-                : `constrained by maximum number value of ${MAX}.`
-              : never
-            : CONSTRAINTS extends { maxExclusive: infer MAX }
-            ? MAX extends number
-              ? number extends MAX
-                ? never
-                : `constrained by a number less than ${MAX}.`
-              : never
-            : never);
-    }
-  : {};
+type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
+  ? [
+      ...(CONSTRAINTS extends { min: infer MIN }
+        ? MIN extends number
+          ? number extends MIN
+            ? []
+            : [`constrained by a minimum number value of ${MIN}.`]
+          : []
+        : CONSTRAINTS extends { minExclusive: infer MIN }
+        ? MIN extends number
+          ? number extends MIN
+            ? []
+            : [`constrained by a number greater than ${MIN}.`]
+          : []
+        : []),
+      ...(CONSTRAINTS extends { max: infer MAX }
+        ? MAX extends number
+          ? number extends MAX
+            ? []
+            : [`constrained by maximum number value of ${MAX}.`]
+          : []
+        : CONSTRAINTS extends { maxExclusive: infer MAX }
+        ? MAX extends number
+          ? number extends MAX
+            ? []
+            : [`constrained by a number less than ${MAX}.`]
+          : []
+        : []),
+    ]
+  : never;
 
 /** 説明つきの型 */
 export type DescribedType<TYPE, NAME, OPT> = NAME extends string
-  ? TYPE &
-      Normalize<
-        | {
-            [description]: `${Hyphenate<NAME>}${TYPE extends boolean
-              ? ''
-              : ` ${OPT extends { example: `${infer EXAMPLE}` }
-                  ? EXAMPLE
-                  : 'parameter'}`}${OPT extends {
-              readonly describe: `${infer DESCRIPTION}`;
-            }
-              ? `: ${DESCRIPTION}`
-              : ''}`;
-          }
-        | (TYPE extends string | number
-            ? OPT extends { readonly required: true }
-              ? { [description]: 'must be specified always.' }
-              : never
-            : never)
-        | (OPT extends { readonly alone: true }
-            ? { [description]: 'must be specified alone.' }
-            : never)
-        | (TYPE extends string | number
-            ? OPT extends { readonly default: infer DEFAULT }
-              ? DEFAULT extends TYPE
-                ? TYPE extends DEFAULT
-                  ? never
-                  : { [description]: `as ${DEFAULT} if omitted.` }
-                : never
-              : OPT extends string | number
-                ? TYPE extends OPT
-                  ? never
-                  : { [description]: `as ${OPT} if omitted.` }
-                : never
-            : never)
-        | (OPT extends { readonly multiple: true }
-            ? { [description]: 'can be specified multiple.' }
-            : never)
-        | (OPT extends { readonly constraints: infer CONSTRAINTS }
-            ? CONSTRAINTS extends RegExp
-              ? TYPE extends string
-                ? { [description]: 'constrained by RegExp.' }
-                : TYPE extends readonly string[]
-                ? { [description]: 'constrained by RegExp.' }
-                : never
-              : CONSTRAINTS extends readonly unknown[]
-              ? TYPE extends string | number
-                ? CONSTRAINTS extends readonly TYPE[]
-                  ? { [description]: `constrained to ${Join<CONSTRAINTS>}.` }
-                  : never
-                : never
-              : CONSTRAINTS extends Record<string, number>
-              ? TYPE extends number
-                ? RagneConstraints<CONSTRAINTS>
-                : TYPE extends readonly number[]
-                ? RagneConstraints<CONSTRAINTS>
-                : never
-              : never
-            : never)
-      >
+  ? TYPE & {
+      [description]: [
+        `${Hyphenate<NAME>}${TYPE extends boolean
+          ? ''
+          : ` ${OPT extends { example: `${infer EXAMPLE}` }
+              ? EXAMPLE
+              : 'parameter'}`}${OPT extends {
+          readonly describe: `${infer DESCRIPTION}`;
+        }
+          ? `: ${DESCRIPTION}`
+          : ''}`,
+        ...(TYPE extends string | number
+          ? OPT extends { readonly required: true }
+            ? ['must be specified always.']
+            : []
+          : []),
+        ...(OPT extends { readonly alone: true }
+          ? ['must be specified alone.']
+          : []),
+        ...(TYPE extends string | number
+          ? OPT extends { readonly default: infer DEFAULT }
+            ? DEFAULT extends TYPE
+              ? TYPE extends DEFAULT
+                ? []
+                : [`as ${DEFAULT} if omitted.`]
+              : []
+            : OPT extends string | number
+            ? TYPE extends OPT
+              ? []
+              : [`as ${OPT} if omitted.`]
+            : []
+          : []),
+        ...(OPT extends { readonly multiple: true }
+          ? ['can be specified multiple.']
+          : []),
+        ...(OPT extends { readonly constraints: infer CONSTRAINTS }
+          ? CONSTRAINTS extends RegExp
+            ? TYPE extends string
+              ? ['constrained by RegExp.']
+              : TYPE extends readonly string[]
+              ? ['constrained by RegExp.']
+              : []
+            : CONSTRAINTS extends readonly unknown[]
+            ? TYPE extends string | number
+              ? CONSTRAINTS extends readonly TYPE[]
+                ? [`constrained to ${Join<CONSTRAINTS>}.`]
+                : []
+              : []
+            : CONSTRAINTS extends Record<string, number>
+            ? TYPE extends number
+              ? RangeConstraints<CONSTRAINTS>
+              : TYPE extends readonly number[]
+              ? RangeConstraints<CONSTRAINTS>
+              : []
+            : []
+          : []),
+      ];
+    }
   : never;
 
-/** ユーティリティー型のテスト用 */
-type TypeTest<ACTUAL, EXPECT> = (<T>(a: T) => ACTUAL) extends <T>(
-  a: T,
-) => EXPECT
-  ? (<T>(a: T) => EXPECT) extends <T>(a: T) => ACTUAL
+/**
+ * 型同士が一致するかどうかを返す型関数。
+ */
+type Equal<A, B> = (<T>(a: T) => A) extends <T>(a: T) => B
+  ? (<T>(a: T) => B) extends <T>(a: T) => A
     ? true
-    : false & { actual: ACTUAL }
-  : false & { actual: ACTUAL };
+    : false
+  : false;
+/**
+ * ユーティリティー型関数のテスト用の型。
+ *
+ * Validateに渡すことで型関数のテストができる。
+ *
+ * @param ACTUAL テストしたい型
+ * @param EXPECT 期待する型
+ * @returns ACTUALがEXPECTに一致したかどうかの真偽値と`{actual: ACTUAL}`の交差型。
+ *
+ * 結果の`actual`プロパティにACTUALそのものが設定されているので、その型を見てデバッグできる。
+ */
+type TypeTest<ACTUAL, EXPECT> = Equal<ACTUAL, EXPECT> & { actual: ACTUAL };
+/**
+ * ユーティリティー型関数のテスト用の型。
+ *
+ * TにTypeTestでテストした結果を渡すことで型関数のテストができる。
+ *
+ * @param T TypeTestでテストした結果。true以外はエラーとなる。
+ * @returns Tそのもの。
+ *
+ * TypeTestの結果はテストに失敗すると
+ * actualプロパティにACTUALが指定されたオブジェクトになるので
+ * Validateの結果を見ればACTUALの実際の型がわかる。
+ */
 type Validate<T extends true> = T;
 
 // 型自体や内部で使用するSymbolをexportしていないため外部ではテストできない型のテスト
@@ -149,45 +171,45 @@ type _TEST_Join3 = Validate<
 
 type _TEST_DescribedType1 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', {}>,
-    string & { [description]: '--aaa parameter' }
+    DescribedType<string, 'aaa', Record<string, never>>,
+    string & { [description]: ['--aaa parameter'] }
   >
 >;
 type _TEST_DescribedType2 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { describe: 'abcdef' }>,
-    string & { [description]: '--aaa parameter: abcdef' }
+    string & { [description]: ['--aaa parameter: abcdef'] }
   >
 >;
 type _TEST_DescribedType3 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { example: 'AAA' }>,
-    string & { [description]: '--aaa AAA' }
+    string & { [description]: ['--aaa AAA'] }
   >
 >;
 type _TEST_DescribedType4 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { alone: true }>,
-    string & { [description]: '--aaa parameter' | 'must be specified alone.' }
+    string & { [description]: ['--aaa parameter', 'must be specified alone.'] }
   >
 >;
 type _TEST_DescribedType5 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { required: true }>,
-    string & { [description]: '--aaa parameter' | 'must be specified always.' }
+    string & { [description]: ['--aaa parameter', 'must be specified always.'] }
   >
 >;
 type _TEST_DescribedType6 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { default: 'abc' }>,
-    string & { [description]: '--aaa parameter' | 'as abc if omitted.' }
+    string & { [description]: ['--aaa parameter', 'as abc if omitted.'] }
   >
 >;
 type _TEST_DescribedType7 = Validate<
   TypeTest<
     DescribedType<readonly string[], 'aaa', { multiple: true }>,
     readonly string[] & {
-      [description]: '--aaa parameter' | 'can be specified multiple.';
+      [description]: ['--aaa parameter', 'can be specified multiple.'];
     }
   >
 >;
@@ -195,7 +217,7 @@ type _TEST_DescribedType8 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { constraints: RegExp }>,
     string & {
-      [description]: '--aaa parameter' | 'constrained by RegExp.';
+      [description]: ['--aaa parameter', 'constrained by RegExp.'];
     }
   >
 >;
@@ -203,7 +225,7 @@ type _TEST_DescribedType9 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { constraints: ['abc', 'def', 'ghi'] }>,
     string & {
-      [description]: '--aaa parameter' | 'constrained to abc, def, ghi.';
+      [description]: ['--aaa parameter', 'constrained to abc, def, ghi.'];
     }
   >
 >;
@@ -211,7 +233,7 @@ type _TEST_DescribedType10 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: [123, 456, 789] }>,
     number & {
-      [description]: '--aaa parameter' | 'constrained to 123, 456, 789.';
+      [description]: ['--aaa parameter', 'constrained to 123, 456, 789.'];
     }
   >
 >;
@@ -219,9 +241,10 @@ type _TEST_DescribedType11 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { min: 10 } }>,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a minimum number value of 10.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a minimum number value of 10.',
+      ];
     }
   >
 >;
@@ -229,9 +252,10 @@ type _TEST_DescribedType12 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { minExclusive: 10 } }>,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a number greater than 10.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a number greater than 10.',
+      ];
     }
   >
 >;
@@ -239,9 +263,10 @@ type _TEST_DescribedType13 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { max: 20 } }>,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by maximum number value of 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by maximum number value of 20.',
+      ];
     }
   >
 >;
@@ -249,9 +274,10 @@ type _TEST_DescribedType14 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { maxExclusive: 20 } }>,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a number less than 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a number less than 20.',
+      ];
     }
   >
 >;
@@ -259,10 +285,11 @@ type _TEST_DescribedType15 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { min: 10; max: 20 } }>,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a minimum number value of 10.'
-        | 'constrained by maximum number value of 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a minimum number value of 10.',
+        'constrained by maximum number value of 20.',
+      ];
     }
   >
 >;
@@ -274,10 +301,11 @@ type _TEST_DescribedType16 = Validate<
       { constraints: { minExclusive: 10; maxExclusive: 20 } }
     >,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a number greater than 10.'
-        | 'constrained by a number less than 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a number greater than 10.',
+        'constrained by a number less than 20.',
+      ];
     }
   >
 >;
@@ -289,10 +317,11 @@ type _TEST_DescribedType17 = Validate<
       { constraints: { minExclusive: 10; max: 20 } }
     >,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a number greater than 10.'
-        | 'constrained by maximum number value of 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a number greater than 10.',
+        'constrained by maximum number value of 20.',
+      ];
     }
   >
 >;
@@ -304,10 +333,11 @@ type _TEST_DescribedType18 = Validate<
       { constraints: { min: 10; maxExclusive: 20 } }
     >,
     number & {
-      [description]:
-        | '--aaa parameter'
-        | 'constrained by a minimum number value of 10.'
-        | 'constrained by a number less than 20.';
+      [description]: [
+        '--aaa parameter',
+        'constrained by a minimum number value of 10.',
+        'constrained by a number less than 20.',
+      ];
     }
   >
 >;
@@ -319,33 +349,38 @@ type _TEST_DescribedType19 = Validate<
       { multiple: true; constraints: RegExp }
     >,
     readonly string[] & {
-      [description]:
-        | '--aaa parameter'
-        | 'can be specified multiple.'
-        | 'constrained by RegExp.';
+      [description]: [
+        '--aaa parameter',
+        'can be specified multiple.',
+        'constrained by RegExp.',
+      ];
     }
   >
 >;
 type _TEST_DescribedType20 = Validate<
   TypeTest<
-    DescribedType<
-      string,
-      'aaa',
-      'abc'
-    >,
-string & {
-  [description]: '--aaa parameter' | 'as abc if omitted.'
-}>>;
+    DescribedType<string, 'aaa', 'abc'>,
+    string & {
+      [description]: ['--aaa parameter', 'as abc if omitted.'];
+    }
+  >
+>;
 type _TEST_DescribedType21 = Validate<
   TypeTest<
-    DescribedType<
-      number,
-      'aaa',
-      123
-    >,
-number & {
-  [description]: '--aaa parameter' | 'as 123 if omitted.'
-}>>;
+    DescribedType<number, 'aaa', 123>,
+    number & {
+      [description]: ['--aaa parameter', 'as 123 if omitted.'];
+    }
+  >
+>;
+type _TEST_DescribedType22 = Validate<
+  TypeTest<
+    DescribedType<true, 'aaa', true>,
+    true & {
+      [description]: ['--aaa'];
+    }
+  >
+>;
 /**
  * &で結合されたオブジェクト型をまとめる。
  *
@@ -682,7 +717,11 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
             OPTMAP[N] extends { alone: true }
             ? { readonly [K in N]?: never }
             : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
-            OPTMAP[N] extends { required: true } | { default: OptType } | string | number
+            OPTMAP[N] extends
+                | { required: true }
+                | { default: OptType }
+                | string
+                | number
             ? { readonly [K in N]: DescribedType<OptType, N, OPTMAP[N]> }
             : // multipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
@@ -778,7 +817,7 @@ class CommandLineParsingError extends Error {
  */
 function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
   throw new CommandLineParsingError(
-    args[0].reduce((r, e, i) => `${r}${args[i]}${e}`),
+    args[0].reduce((r, e, i) => r + String(args[i]) + e),
   );
 }
 
@@ -893,14 +932,14 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
           info.default === undefined,
           `The default value of the ${hyphenate(
             name,
-          )} parameter cannot be specified.: ${info.default}`,
+          )} parameter cannot be specified.: ${String(info.default)}`,
         );
         break;
       default:
         // 他のタイプを指定するとTypeScriptのエラーになるはずだが念の為
         checkNever(
           info,
-          `unknown type: ${type} for the ${hyphenate(name)} parameter`,
+          `unknown type: ${String(type)} for the ${hyphenate(name)} parameter`,
         );
     }
     if (info.alone) {
