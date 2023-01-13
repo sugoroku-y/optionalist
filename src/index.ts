@@ -26,10 +26,12 @@ type Join<A extends readonly (string | number)[]> = A extends [
 ]
   ? FIRST extends string | number
     ? REST extends [string | number, ...(string | number)[]]
-      ? `${FIRST}, ${Join<REST>}`
+      ? `${FIRST extends string ? `'${FIRST}'` : FIRST}, ${Join<REST>}`
+      : FIRST extends string
+      ? `'${FIRST}'`
       : FIRST
     : never
-  : never;
+  : '';
 
 type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
   ? [
@@ -37,26 +39,26 @@ type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
         ? MIN extends number
           ? number extends MIN
             ? []
-            : [`constrained by a minimum number value of ${MIN}.`]
+            : [`is at least ${MIN}.`]
           : []
         : CONSTRAINTS extends { minExclusive: infer MIN }
         ? MIN extends number
           ? number extends MIN
             ? []
-            : [`constrained by a number greater than ${MIN}.`]
+            : [`is greater than ${MIN}.`]
           : []
         : []),
       ...(CONSTRAINTS extends { max: infer MAX }
         ? MAX extends number
           ? number extends MAX
             ? []
-            : [`constrained by maximum number value of ${MAX}.`]
+            : [`is at most ${MAX}.`]
           : []
         : CONSTRAINTS extends { maxExclusive: infer MAX }
         ? MAX extends number
           ? number extends MAX
             ? []
-            : [`constrained by a number less than ${MAX}.`]
+            : [`is less than ${MAX}.`]
           : []
         : []),
     ]
@@ -77,23 +79,27 @@ export type DescribedType<TYPE, NAME, OPT> = NAME extends string
           : ''}`,
         ...(TYPE extends string | number
           ? OPT extends { readonly required: true }
-            ? ['must be specified always.']
+            ? ['is specified always.']
             : []
           : []),
         ...(OPT extends { readonly alone: true }
-          ? ['must be specified alone.']
+          ? ['is specified alone.']
           : []),
         ...(TYPE extends string | number
           ? OPT extends { readonly default: infer DEFAULT }
             ? DEFAULT extends TYPE
               ? TYPE extends DEFAULT
                 ? []
-                : [`as ${DEFAULT} if omitted.`]
+                : [
+                    `as ${DEFAULT extends string
+                      ? `'${DEFAULT}'`
+                      : DEFAULT} if omitted.`,
+                  ]
               : []
             : OPT extends string | number
             ? TYPE extends OPT
               ? []
-              : [`as ${OPT} if omitted.`]
+              : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
             : []
           : []),
         ...(OPT extends { readonly multiple: true }
@@ -102,14 +108,14 @@ export type DescribedType<TYPE, NAME, OPT> = NAME extends string
         ...(OPT extends { readonly constraints: infer CONSTRAINTS }
           ? CONSTRAINTS extends RegExp
             ? TYPE extends string
-              ? ['constrained by RegExp.']
+              ? ['is checked by the regular expression.']
               : TYPE extends readonly string[]
-              ? ['constrained by RegExp.']
+              ? ['is checked by the regular expression.']
               : []
             : CONSTRAINTS extends readonly unknown[]
             ? TYPE extends string | number
               ? CONSTRAINTS extends readonly TYPE[]
-                ? [`constrained to ${Join<CONSTRAINTS>}.`]
+                ? [`is either ${Join<CONSTRAINTS>}.`]
                 : []
               : []
             : CONSTRAINTS extends Record<string, number>
@@ -152,9 +158,9 @@ type TypeTest<ACTUAL, EXPECT> = Equal<ACTUAL, EXPECT> & { actual: ACTUAL };
  * @param T TypeTestでテストした結果。true以外はエラーとなる。
  * @returns Tそのもの。
  *
- * TypeTestの結果はテストに失敗すると
- * actualプロパティにACTUALが指定されたオブジェクトになるので
- * Validateの結果を見ればACTUALの実際の型がわかる。
+ * TypeTestの結果はテストに成功したかどうかの真偽値と
+ * actualプロパティにACTUALが指定されたオブジェクトの交差型になるので
+ * Validate<TypeTest<ACTUAL, EXPECT>>の結果を見ればACTUALの実際の型がわかる。
  */
 type Validate<T extends true> = T;
 
@@ -163,10 +169,10 @@ type Validate<T extends true> = T;
 type _TEST_Hyphenate1 = Validate<TypeTest<Hyphenate<'a'>, '-a'>>;
 type _TEST_Hyphenate2 = Validate<TypeTest<Hyphenate<'aa'>, '--aa'>>;
 
-type _TEST_Join1 = Validate<TypeTest<Join<[]>, never>>;
+type _TEST_Join1 = Validate<TypeTest<Join<[]>, ''>>;
 type _TEST_Join2 = Validate<TypeTest<Join<[123, 456, 789]>, '123, 456, 789'>>;
 type _TEST_Join3 = Validate<
-  TypeTest<Join<['abc', 'def', 'ghi']>, 'abc, def, ghi'>
+  TypeTest<Join<['abc', 'def', 'ghi']>, "'abc', 'def', 'ghi'">
 >;
 
 type _TEST_DescribedType1 = Validate<
@@ -190,19 +196,19 @@ type _TEST_DescribedType3 = Validate<
 type _TEST_DescribedType4 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { alone: true }>,
-    string & { [description]: ['--aaa parameter', 'must be specified alone.'] }
+    string & { [description]: ['--aaa parameter', 'is specified alone.'] }
   >
 >;
 type _TEST_DescribedType5 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { required: true }>,
-    string & { [description]: ['--aaa parameter', 'must be specified always.'] }
+    string & { [description]: ['--aaa parameter', 'is specified always.'] }
   >
 >;
 type _TEST_DescribedType6 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { default: 'abc' }>,
-    string & { [description]: ['--aaa parameter', 'as abc if omitted.'] }
+    string & { [description]: ['--aaa parameter', "as 'abc' if omitted."] }
   >
 >;
 type _TEST_DescribedType7 = Validate<
@@ -217,7 +223,10 @@ type _TEST_DescribedType8 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { constraints: RegExp }>,
     string & {
-      [description]: ['--aaa parameter', 'constrained by RegExp.'];
+      [description]: [
+        '--aaa parameter',
+        'is checked by the regular expression.',
+      ];
     }
   >
 >;
@@ -225,7 +234,7 @@ type _TEST_DescribedType9 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', { constraints: ['abc', 'def', 'ghi'] }>,
     string & {
-      [description]: ['--aaa parameter', 'constrained to abc, def, ghi.'];
+      [description]: ['--aaa parameter', "is either 'abc', 'def', 'ghi'."];
     }
   >
 >;
@@ -233,7 +242,7 @@ type _TEST_DescribedType10 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: [123, 456, 789] }>,
     number & {
-      [description]: ['--aaa parameter', 'constrained to 123, 456, 789.'];
+      [description]: ['--aaa parameter', 'is either 123, 456, 789.'];
     }
   >
 >;
@@ -241,10 +250,7 @@ type _TEST_DescribedType11 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { min: 10 } }>,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by a minimum number value of 10.',
-      ];
+      [description]: ['--aaa parameter', 'is at least 10.'];
     }
   >
 >;
@@ -252,10 +258,7 @@ type _TEST_DescribedType12 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { minExclusive: 10 } }>,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by a number greater than 10.',
-      ];
+      [description]: ['--aaa parameter', 'is greater than 10.'];
     }
   >
 >;
@@ -263,10 +266,7 @@ type _TEST_DescribedType13 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { max: 20 } }>,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by maximum number value of 20.',
-      ];
+      [description]: ['--aaa parameter', 'is at most 20.'];
     }
   >
 >;
@@ -274,10 +274,7 @@ type _TEST_DescribedType14 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { maxExclusive: 20 } }>,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by a number less than 20.',
-      ];
+      [description]: ['--aaa parameter', 'is less than 20.'];
     }
   >
 >;
@@ -285,11 +282,7 @@ type _TEST_DescribedType15 = Validate<
   TypeTest<
     DescribedType<number, 'aaa', { constraints: { min: 10; max: 20 } }>,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by a minimum number value of 10.',
-        'constrained by maximum number value of 20.',
-      ];
+      [description]: ['--aaa parameter', 'is at least 10.', 'is at most 20.'];
     }
   >
 >;
@@ -303,8 +296,8 @@ type _TEST_DescribedType16 = Validate<
     number & {
       [description]: [
         '--aaa parameter',
-        'constrained by a number greater than 10.',
-        'constrained by a number less than 20.',
+        'is greater than 10.',
+        'is less than 20.',
       ];
     }
   >
@@ -319,8 +312,8 @@ type _TEST_DescribedType17 = Validate<
     number & {
       [description]: [
         '--aaa parameter',
-        'constrained by a number greater than 10.',
-        'constrained by maximum number value of 20.',
+        'is greater than 10.',
+        'is at most 20.',
       ];
     }
   >
@@ -333,11 +326,7 @@ type _TEST_DescribedType18 = Validate<
       { constraints: { min: 10; maxExclusive: 20 } }
     >,
     number & {
-      [description]: [
-        '--aaa parameter',
-        'constrained by a minimum number value of 10.',
-        'constrained by a number less than 20.',
-      ];
+      [description]: ['--aaa parameter', 'is at least 10.', 'is less than 20.'];
     }
   >
 >;
@@ -352,7 +341,7 @@ type _TEST_DescribedType19 = Validate<
       [description]: [
         '--aaa parameter',
         'can be specified multiple.',
-        'constrained by RegExp.',
+        'is checked by the regular expression.',
       ];
     }
   >
@@ -361,7 +350,7 @@ type _TEST_DescribedType20 = Validate<
   TypeTest<
     DescribedType<string, 'aaa', 'abc'>,
     string & {
-      [description]: ['--aaa parameter', 'as abc if omitted.'];
+      [description]: ['--aaa parameter', "as 'abc' if omitted."];
     }
   >
 >;
