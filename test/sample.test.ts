@@ -124,9 +124,9 @@ describe('sample package test', () => {
     args[0].length > 1 || args[0][0] ? `${templateLiteral(...args)}\n\n` : ''
   }Version: sample 0.0.1
 Usage:
-  npx sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
-  npx sample --help
-  npx sample --init
+  node sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
+  node sample --help
+  node sample --init
 
 Description:
   The description for command.

@@ -1369,7 +1369,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   help.push(
     ...aloneList.map(
       option =>
-        `  npx ${
+        `  node ${
           // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
           processName ?? process.argv[1]
         } ${option}`,

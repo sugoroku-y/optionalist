@@ -317,9 +317,9 @@ test('optionalist helpstring', () => {
   expect(parse(OPTMAP, ['--charlie'])[helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
-  npx ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--golf parameter] [--hotel parameter] [--india parameter] [--GOLF parameter] [--] [argument...]
-  npx ${packageName} --charlie
-  npx ${packageName} --echo parameter
+  node ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--golf parameter] [--hotel parameter] [--india parameter] [--GOLF parameter] [--] [argument...]
+  node ${packageName} --charlie
+  node ${packageName} --echo parameter
 
 Description:
   UnitTest for optionalist.
@@ -448,7 +448,7 @@ test('showUsageOnError', () => {
 
 Version: ${packageName} ${version}
 Usage:
-  npx ${packageName} --aaa parameter [--] [unnamed_parameters...]
+  node ${packageName} --aaa parameter [--] [unnamed_parameters...]
 
 Options:
   --aaa parameter
@@ -460,7 +460,7 @@ test('helpString', () => {
   expect(parse({ a: {} }, [])[helpString])
     .toBe(`Version: ${packageName} ${version}
 Usage:
-  npx ${packageName} [-a parameter]
+  node ${packageName} [-a parameter]
 
 Options:
   -a parameter

@@ -111,9 +111,9 @@ if (options.help) {
   // この例では以下のような文字列になる。
   // Version: sample 0.0.1
   // Usage:
-  //   npx sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
-  //   npx sample --help
-  //   npx sample --init
+  //   node sample --output output_filename [--config config_filename] [--watch] [--timeout parameter] [--] [script_filename...]
+  //   node sample --help
+  //   node sample --init
 
   // Description:
   //   The description for command.
