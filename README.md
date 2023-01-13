@@ -345,7 +345,7 @@ assert(typeof ccc === 'number');
 無名オプションは`[optionalist.unnamed]`で`string`の配列として取得できます。
 
 ```ts
-for (const arg og options[optionalist.unnamed]) {
+for (const arg of options[optionalist.unnamed]) {
   // ...
 }
 ```
