@@ -418,13 +418,13 @@ const options = optionalist.parse({
 
 ```ts
 (property) output: string & {
-    [description]: ["--output output_filename: Specify the filename to output.", "must be specified always."];
+    [description]: ["--output output_filename: Specify the filename to output.", "is specified always."];
 }
 ```
 
 のように表示されます。
 
 実際にコマンドラインパラメーターとして指定する際の文字列 `--output output_filename`
- および説明 `Specify the filename to output.` と、`required`が指定されているので必須パラメーターであることを示す `must be specified always.` が表示されています。同様に`alone`や`default`などを指定した場合も説明が追加されます。
+ および説明 `Specify the filename to output.` と、`required`が指定されているので必須パラメーターであることを示す `is specified always.` が表示されています。同様に`alone`や`default`などを指定した場合も説明が追加されます。
 
 ただし実際にこの説明文をプロパティとして保持しているわけではないため、アクセスできないことに注意してください。
