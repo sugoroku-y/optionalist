@@ -8,6 +8,12 @@ import { resolve } from 'path';
  * @deprecated
  */
 declare const description: unique symbol;
+/** 説明つきの型 */
+export type DescribedType<TYPE, DESCRIPTION> = DESCRIPTION extends string[]
+  ? TYPE & {
+      [description]: DESCRIPTION;
+    }
+  : TYPE;
 
 /**
  * 文字数に応じて前に`-`をつける。
@@ -64,71 +70,66 @@ type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
     ]
   : never;
 
-/** 説明つきの型 */
-export type DescribedType<TYPE, NAME, OPT> = NAME extends string
-  ? TYPE & {
-      [description]: [
-        `${Hyphenate<NAME>}${TYPE extends boolean
-          ? ''
-          : ` ${OPT extends { example: `${infer EXAMPLE}` }
-              ? EXAMPLE
-              : 'parameter'}`}${OPT extends {
-          readonly describe: `${infer DESCRIPTION}`;
-        }
-          ? `: ${DESCRIPTION}`
-          : ''}`,
-        ...(TYPE extends string | number
-          ? OPT extends { readonly required: true }
-            ? ['is specified always.']
-            : []
-          : []),
-        ...(OPT extends { readonly alone: true }
-          ? ['is specified alone.']
-          : []),
-        ...(TYPE extends string | number
-          ? OPT extends { readonly default: infer DEFAULT }
-            ? DEFAULT extends TYPE
-              ? TYPE extends DEFAULT
-                ? []
-                : [
-                    `as ${DEFAULT extends string
-                      ? `'${DEFAULT}'`
-                      : DEFAULT} if omitted.`,
-                  ]
-              : []
-            : OPT extends string | number
-            ? TYPE extends OPT
+type PropertyDescription<TYPE, NAME, OPT> = NAME extends string
+  ? [
+      `${Hyphenate<NAME>}${TYPE extends boolean
+        ? ''
+        : ` ${OPT extends { example: `${infer EXAMPLE}` }
+            ? EXAMPLE
+            : 'parameter'}`}${OPT extends {
+        readonly describe: `${infer DESCRIPTION}`;
+      }
+        ? `: ${DESCRIPTION}`
+        : ''}`,
+      ...(TYPE extends string | number
+        ? OPT extends { readonly required: true }
+          ? ['is specified always.']
+          : []
+        : []),
+      ...(OPT extends { readonly alone: true } ? ['is specified alone.'] : []),
+      ...(TYPE extends string | number
+        ? OPT extends { readonly default: infer DEFAULT }
+          ? DEFAULT extends TYPE
+            ? TYPE extends DEFAULT
               ? []
-              : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
+              : [
+                  `as ${DEFAULT extends string
+                    ? `'${DEFAULT}'`
+                    : DEFAULT} if omitted.`,
+                ]
             : []
-          : []),
-        ...(OPT extends { readonly multiple: true }
-          ? ['can be specified multiple.']
-          : []),
-        ...(OPT extends { readonly constraints: infer CONSTRAINTS }
-          ? CONSTRAINTS extends RegExp
-            ? TYPE extends string
-              ? ['is checked by the regular expression.']
-              : TYPE extends readonly string[]
-              ? ['is checked by the regular expression.']
-              : []
-            : CONSTRAINTS extends readonly unknown[]
-            ? TYPE extends string | number
-              ? CONSTRAINTS extends readonly TYPE[]
-                ? [`is either ${Join<CONSTRAINTS>}.`]
-                : []
-              : []
-            : CONSTRAINTS extends Record<string, number>
-            ? TYPE extends number
-              ? RangeConstraints<CONSTRAINTS>
-              : TYPE extends readonly number[]
-              ? RangeConstraints<CONSTRAINTS>
+          : OPT extends string | number
+          ? TYPE extends OPT
+            ? []
+            : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
+          : []
+        : []),
+      ...(OPT extends { readonly multiple: true }
+        ? ['can be specified multiple.']
+        : []),
+      ...(OPT extends { readonly constraints: infer CONSTRAINTS }
+        ? CONSTRAINTS extends RegExp
+          ? TYPE extends string
+            ? ['is checked by the regular expression.']
+            : TYPE extends readonly string[]
+            ? ['is checked by the regular expression.']
+            : []
+          : CONSTRAINTS extends readonly unknown[]
+          ? TYPE extends string | number
+            ? CONSTRAINTS extends readonly TYPE[]
+              ? [`is either ${Join<CONSTRAINTS>}.`]
               : []
             : []
-          : []),
-      ];
-    }
-  : never;
+          : CONSTRAINTS extends Record<string, number>
+          ? TYPE extends number
+            ? RangeConstraints<CONSTRAINTS>
+            : TYPE extends readonly number[]
+            ? RangeConstraints<CONSTRAINTS>
+            : []
+          : []
+        : []),
+    ]
+  : [];
 
 /**
  * 型同士が一致するかどうかを返す型関数。
@@ -175,200 +176,154 @@ type _TEST_Join3 = Validate<
   TypeTest<Join<['abc', 'def', 'ghi']>, "'abc', 'def', 'ghi'">
 >;
 
-type _TEST_DescribedType1 = Validate<
+type _TEST_PropertyDescription1 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', Record<string, never>>,
-    string & { [description]: ['--aaa parameter'] }
+    PropertyDescription<string, 'aaa', Record<string, never>>,
+    ['--aaa parameter']
   >
 >;
-type _TEST_DescribedType2 = Validate<
+type _TEST_PropertyDescription2 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { describe: 'abcdef' }>,
-    string & { [description]: ['--aaa parameter: abcdef'] }
+    PropertyDescription<string, 'aaa', { describe: 'abcdef' }>,
+    ['--aaa parameter: abcdef']
   >
 >;
-type _TEST_DescribedType3 = Validate<
+type _TEST_PropertyDescription3 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { example: 'AAA' }>,
-    string & { [description]: ['--aaa AAA'] }
+    PropertyDescription<string, 'aaa', { example: 'AAA' }>,
+    ['--aaa AAA']
   >
 >;
-type _TEST_DescribedType4 = Validate<
+type _TEST_PropertyDescription4 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { alone: true }>,
-    string & { [description]: ['--aaa parameter', 'is specified alone.'] }
+    PropertyDescription<string, 'aaa', { alone: true }>,
+    ['--aaa parameter', 'is specified alone.']
   >
 >;
-type _TEST_DescribedType5 = Validate<
+type _TEST_PropertyDescription5 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { required: true }>,
-    string & { [description]: ['--aaa parameter', 'is specified always.'] }
+    PropertyDescription<string, 'aaa', { required: true }>,
+    ['--aaa parameter', 'is specified always.']
   >
 >;
-type _TEST_DescribedType6 = Validate<
+type _TEST_PropertyDescription6 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { default: 'abc' }>,
-    string & { [description]: ['--aaa parameter', "as 'abc' if omitted."] }
+    PropertyDescription<string, 'aaa', { default: 'abc' }>,
+    ['--aaa parameter', "as 'abc' if omitted."]
   >
 >;
-type _TEST_DescribedType7 = Validate<
+type _TEST_PropertyDescription7 = Validate<
   TypeTest<
-    DescribedType<readonly string[], 'aaa', { multiple: true }>,
-    readonly string[] & {
-      [description]: ['--aaa parameter', 'can be specified multiple.'];
-    }
+    PropertyDescription<readonly string[], 'aaa', { multiple: true }>,
+    ['--aaa parameter', 'can be specified multiple.']
   >
 >;
-type _TEST_DescribedType8 = Validate<
+type _TEST_PropertyDescription8 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { constraints: RegExp }>,
-    string & {
-      [description]: [
-        '--aaa parameter',
-        'is checked by the regular expression.',
-      ];
-    }
+    PropertyDescription<string, 'aaa', { constraints: RegExp }>,
+    ['--aaa parameter', 'is checked by the regular expression.']
   >
 >;
-type _TEST_DescribedType9 = Validate<
+type _TEST_PropertyDescription9 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', { constraints: ['abc', 'def', 'ghi'] }>,
-    string & {
-      [description]: ['--aaa parameter', "is either 'abc', 'def', 'ghi'."];
-    }
+    PropertyDescription<string, 'aaa', { constraints: ['abc', 'def', 'ghi'] }>,
+    ['--aaa parameter', "is either 'abc', 'def', 'ghi'."]
   >
 >;
-type _TEST_DescribedType10 = Validate<
+type _TEST_PropertyDescription10 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: [123, 456, 789] }>,
-    number & {
-      [description]: ['--aaa parameter', 'is either 123, 456, 789.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: [123, 456, 789] }>,
+    ['--aaa parameter', 'is either 123, 456, 789.']
   >
 >;
-type _TEST_DescribedType11 = Validate<
+type _TEST_PropertyDescription11 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: { min: 10 } }>,
-    number & {
-      [description]: ['--aaa parameter', 'is at least 10.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: { min: 10 } }>,
+    ['--aaa parameter', 'is at least 10.']
   >
 >;
-type _TEST_DescribedType12 = Validate<
+type _TEST_PropertyDescription12 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: { minExclusive: 10 } }>,
-    number & {
-      [description]: ['--aaa parameter', 'is greater than 10.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: { minExclusive: 10 } }>,
+    ['--aaa parameter', 'is greater than 10.']
   >
 >;
-type _TEST_DescribedType13 = Validate<
+type _TEST_PropertyDescription13 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: { max: 20 } }>,
-    number & {
-      [description]: ['--aaa parameter', 'is at most 20.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: { max: 20 } }>,
+    ['--aaa parameter', 'is at most 20.']
   >
 >;
-type _TEST_DescribedType14 = Validate<
+type _TEST_PropertyDescription14 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: { maxExclusive: 20 } }>,
-    number & {
-      [description]: ['--aaa parameter', 'is less than 20.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: { maxExclusive: 20 } }>,
+    ['--aaa parameter', 'is less than 20.']
   >
 >;
-type _TEST_DescribedType15 = Validate<
+type _TEST_PropertyDescription15 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', { constraints: { min: 10; max: 20 } }>,
-    number & {
-      [description]: ['--aaa parameter', 'is at least 10.', 'is at most 20.'];
-    }
+    PropertyDescription<number, 'aaa', { constraints: { min: 10; max: 20 } }>,
+    ['--aaa parameter', 'is at least 10.', 'is at most 20.']
   >
 >;
-type _TEST_DescribedType16 = Validate<
+type _TEST_PropertyDescription16 = Validate<
   TypeTest<
-    DescribedType<
+    PropertyDescription<
       number,
       'aaa',
       { constraints: { minExclusive: 10; maxExclusive: 20 } }
     >,
-    number & {
-      [description]: [
-        '--aaa parameter',
-        'is greater than 10.',
-        'is less than 20.',
-      ];
-    }
+    ['--aaa parameter', 'is greater than 10.', 'is less than 20.']
   >
 >;
-type _TEST_DescribedType17 = Validate<
+type _TEST_PropertyDescription17 = Validate<
   TypeTest<
-    DescribedType<
+    PropertyDescription<
       number,
       'aaa',
       { constraints: { minExclusive: 10; max: 20 } }
     >,
-    number & {
-      [description]: [
-        '--aaa parameter',
-        'is greater than 10.',
-        'is at most 20.',
-      ];
-    }
+    ['--aaa parameter', 'is greater than 10.', 'is at most 20.']
   >
 >;
-type _TEST_DescribedType18 = Validate<
+type _TEST_PropertyDescription18 = Validate<
   TypeTest<
-    DescribedType<
+    PropertyDescription<
       number,
       'aaa',
       { constraints: { min: 10; maxExclusive: 20 } }
     >,
-    number & {
-      [description]: ['--aaa parameter', 'is at least 10.', 'is less than 20.'];
-    }
+    ['--aaa parameter', 'is at least 10.', 'is less than 20.']
   >
 >;
-type _TEST_DescribedType19 = Validate<
+type _TEST_PropertyDescription19 = Validate<
   TypeTest<
-    DescribedType<
+    PropertyDescription<
       readonly string[],
       'aaa',
       { multiple: true; constraints: RegExp }
     >,
-    readonly string[] & {
-      [description]: [
-        '--aaa parameter',
-        'can be specified multiple.',
-        'is checked by the regular expression.',
-      ];
-    }
+    [
+      '--aaa parameter',
+      'can be specified multiple.',
+      'is checked by the regular expression.',
+    ]
   >
 >;
-type _TEST_DescribedType20 = Validate<
+type _TEST_PropertyDescription20 = Validate<
   TypeTest<
-    DescribedType<string, 'aaa', 'abc'>,
-    string & {
-      [description]: ['--aaa parameter', "as 'abc' if omitted."];
-    }
+    PropertyDescription<string, 'aaa', 'abc'>,
+    ['--aaa parameter', "as 'abc' if omitted."]
   >
 >;
-type _TEST_DescribedType21 = Validate<
+type _TEST_PropertyDescription21 = Validate<
   TypeTest<
-    DescribedType<number, 'aaa', 123>,
-    number & {
-      [description]: ['--aaa parameter', 'as 123 if omitted.'];
-    }
+    PropertyDescription<number, 'aaa', 123>,
+    ['--aaa parameter', 'as 123 if omitted.']
   >
 >;
-type _TEST_DescribedType22 = Validate<
-  TypeTest<
-    DescribedType<true, 'aaa', true>,
-    true & {
-      [description]: ['--aaa'];
-    }
-  >
+type _TEST_PropertyDescription22 = Validate<
+  TypeTest<PropertyDescription<true, 'aaa', true>, ['--aaa']>
 >;
 /**
  * &で結合されたオブジェクト型をまとめる。
@@ -711,18 +666,27 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
                 | { default: OptType }
                 | string
                 | number
-            ? { readonly [K in N]: DescribedType<OptType, N, OPTMAP[N]> }
+            ? {
+                readonly [K in N]: DescribedType<
+                  OptType,
+                  PropertyDescription<OptType, N, OPTMAP[N]>
+                >;
+              }
             : // multipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
             ? {
                 readonly [K in N]: DescribedType<
                   readonly OptType[],
-                  N,
-                  OPTMAP[N]
+                  PropertyDescription<readonly OptType[], N, OPTMAP[N]>
                 >;
               }
             : // それ以外は存在していない可能性のあるプロパティ
-              { readonly [K in N]?: DescribedType<OptType, N, OPTMAP[N]> }
+              {
+                readonly [K in N]?: DescribedType<
+                  OptType,
+                  PropertyDescription<OptType, N, OPTMAP[N]>
+                >;
+              }
           : // プロパティキーが文字列以外の場合は除外
             never
         : never;
@@ -743,7 +707,10 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
     : never]: N extends string
     ? Normalize<
         {
-          readonly [K in N]: DescribedType<OptionType<OPTMAP[N]>, N, OPTMAP[N]>;
+          readonly [K in N]: DescribedType<
+            OptionType<OPTMAP[N]>,
+            PropertyDescription<OptionType<OPTMAP[N]>, N, OPTMAP[N]>
+          >;
         } & {
           readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
         } & {

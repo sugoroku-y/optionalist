@@ -654,7 +654,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.ddd);
     // dddが有効な場合はdddとhelpStringだけ使える
     expect(options.ddd).toEqualType<
-      DescribedType<string, 'ddd', typeof optMap['ddd']>
+      DescribedType<string, ['--ddd parameter: ddd', 'is specified alone.']>
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -688,7 +688,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.hhh);
     // hhhが有効な場合はhhhとhelpStringだけ使える
     expect(options.hhh).toEqualType<
-      DescribedType<number, 'hhh', typeof optMap['hhh']>
+      DescribedType<number, ['--hhh parameter: hhh', 'is specified alone.']>
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -722,7 +722,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.jjj);
     // jjjが有効な場合はjjjとhelpStringだけ使える
     expect(options.jjj).toEqualType<
-      DescribedType<true, 'jjj', typeof optMap['jjj']>
+      DescribedType<true, ['--jjj: jjj', 'is specified alone.']>
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -756,7 +756,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.nnn);
     // nnnが有効な場合はnnnとhelpStringだけ使える
     expect(options.nnn).toEqualType<
-      DescribedType<string, 'nnn', typeof optMap['nnn']>
+      DescribedType<string, ['--nnn parameter: nnn', 'is specified alone.']>
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -806,69 +806,95 @@ describe('type check Options', () => {
     expect(options.nnn).toEqualType<undefined>();
     // aloneでないオプションすべてが使える。
     expect(options.aaa).toEqualType<
-      DescribedType<string, 'aaa', typeof optMap['aaa']> | undefined
+      DescribedType<string, ['--aaa parameter: aaa']> | undefined
     >();
     expect(options.bbb).toEqualType<
-      DescribedType<string, 'bbb', typeof optMap['bbb']>
+      DescribedType<string, ['--bbb parameter: bbb', 'is specified always.']>
     >();
     expect(options.ccc).toEqualType<
-      DescribedType<string, 'ccc', typeof optMap['ccc']>
+      DescribedType<string, ['--ccc parameter: ccc', "as 'abc' if omitted."]>
     >();
     expect(options.eee).toEqualType<
-      DescribedType<number, 'eee', typeof optMap['eee']> | undefined
+      DescribedType<number, ['--eee parameter: eee']> | undefined
     >();
     expect(options.fff).toEqualType<
-      DescribedType<number, 'fff', typeof optMap['fff']>
+      DescribedType<number, ['--fff parameter: fff', 'is specified always.']>
     >();
     expect(options.ggg).toEqualType<
-      DescribedType<number, 'ggg', typeof optMap['ggg']>
+      DescribedType<number, ['--ggg parameter: ggg', 'as 1 if omitted.']>
     >();
     expect(options.iii).toEqualType<
-      DescribedType<true, 'iii', typeof optMap['iii']> | undefined
+      DescribedType<true, ['--iii: iii']> | undefined
     >();
     expect(options.kkk).toEqualType<
-      DescribedType<string, 'kkk', typeof optMap['kkk']> | undefined
+      DescribedType<string, ['--kkk parameter: kkk']> | undefined
     >();
     expect(options.lll).toEqualType<
-      DescribedType<string, 'lll', typeof optMap['lll']>
+      DescribedType<string, ['--lll parameter: lll', 'is specified always.']>
     >();
     expect(options.mmm).toEqualType<
-      DescribedType<string, 'mmm', typeof optMap['mmm']>
+      DescribedType<string, ['--mmm parameter: mmm', "as 'abc' if omitted."]>
     >();
     expect(options.ooo).toEqualType<
-      DescribedType<readonly string[], 'ooo', typeof optMap['ooo']>
+      DescribedType<
+        readonly string[],
+        ['--ooo parameter: ooo', 'can be specified multiple.']
+      >
     >();
     expect(options.ppp).toEqualType<
-      DescribedType<readonly number[], 'ppp', typeof optMap['ppp']>
+      DescribedType<
+        readonly number[],
+        ['--ppp parameter: ppp', 'can be specified multiple.']
+      >
     >();
     expect(options.qqq).toEqualType<
-      DescribedType<readonly string[], 'qqq', typeof optMap['qqq']>
+      DescribedType<
+        readonly string[],
+        ['--qqq parameter: qqq', 'can be specified multiple.']
+      >
     >();
     // 簡易指定なオプションは説明文がつかない
     expect(options.rrr).toEqualType<
-      DescribedType<string, 'rrr', typeof optMap['rrr']>
+      DescribedType<string, ['--rrr parameter', "as 'rrr' if omitted."]>
     >();
     expect(options.sss).toEqualType<
-      DescribedType<number, 'sss', typeof optMap['sss']>
+      DescribedType<number, ['--sss parameter', 'as 123 if omitted.']>
     >();
     expect(options.ttt).toEqualType<
-      DescribedType<true, 'ttt', typeof optMap['ttt']> | undefined
+      DescribedType<true, ['--ttt']> | undefined
     >();
     expect(options.uuu).toEqualType<
       DescribedType<
         readonly ('uuu' | 'vvv' | 'www')[],
-        'uuu',
-        typeof optMap['uuu']
+        ['--uuu parameter: uuu', 'can be specified multiple.']
       >
     >();
     expect(options.vvv).toEqualType<
-      DescribedType<readonly string[], 'vvv', typeof optMap['vvv']>
+      DescribedType<
+        readonly string[],
+        [
+          '--vvv parameter: vvv',
+          'can be specified multiple.',
+          'is checked by the regular expression.',
+        ]
+      >
     >();
     expect(options.www).toEqualType<
-      DescribedType<readonly (123 | 456 | 789)[], 'www', typeof optMap['www']>
+      DescribedType<
+        readonly (123 | 456 | 789)[],
+        ['--www parameter: www', 'can be specified multiple.']
+      >
     >();
     expect(options.xxx).toEqualType<
-      DescribedType<readonly number[], 'xxx', typeof optMap['xxx']>
+      DescribedType<
+        readonly number[],
+        [
+          '--xxx parameter: xxx',
+          'can be specified multiple.',
+          'is at least 10.',
+          'is less than 100.',
+        ]
+      >
     >();
     expect(options[unnamed]).toEqualType<readonly string[]>();
     // helpStringももちろん使える。
