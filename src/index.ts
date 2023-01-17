@@ -70,66 +70,71 @@ type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
     ]
   : never;
 
-type PropertyDescription<TYPE, NAME, OPT> = NAME extends string
-  ? [
-      `${Hyphenate<NAME>}${TYPE extends boolean
-        ? ''
-        : ` ${OPT extends { example: `${infer EXAMPLE}` }
-            ? EXAMPLE
-            : 'parameter'}`}${OPT extends {
-        readonly describe: `${infer DESCRIPTION}`;
-      }
-        ? `: ${DESCRIPTION}`
-        : ''}`,
-      ...(TYPE extends string | number
-        ? OPT extends { readonly required: true }
-          ? ['is specified always.']
-          : []
-        : []),
-      ...(OPT extends { readonly alone: true } ? ['is specified alone.'] : []),
-      ...(TYPE extends string | number
-        ? OPT extends { readonly default: infer DEFAULT }
-          ? DEFAULT extends TYPE
-            ? TYPE extends DEFAULT
+type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
+  ? DescribedType<
+      TYPE,
+      [
+        `${Hyphenate<NAME>}${TYPE extends boolean
+          ? ''
+          : ` ${OPT extends { example: `${infer EXAMPLE}` }
+              ? EXAMPLE
+              : 'parameter'}`}${OPT extends {
+          readonly describe: `${infer DESCRIPTION}`;
+        }
+          ? `: ${DESCRIPTION}`
+          : ''}`,
+        ...(TYPE extends string | number
+          ? OPT extends { readonly required: true }
+            ? ['is specified always.']
+            : []
+          : []),
+        ...(OPT extends { readonly alone: true }
+          ? ['is specified alone.']
+          : []),
+        ...(TYPE extends string | number
+          ? OPT extends { readonly default: infer DEFAULT }
+            ? DEFAULT extends TYPE
+              ? TYPE extends DEFAULT
+                ? []
+                : [
+                    `as ${DEFAULT extends string
+                      ? `'${DEFAULT}'`
+                      : DEFAULT} if omitted.`,
+                  ]
+              : []
+            : OPT extends string | number
+            ? TYPE extends OPT
               ? []
-              : [
-                  `as ${DEFAULT extends string
-                    ? `'${DEFAULT}'`
-                    : DEFAULT} if omitted.`,
-                ]
+              : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
             : []
-          : OPT extends string | number
-          ? TYPE extends OPT
-            ? []
-            : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
-          : []
-        : []),
-      ...(OPT extends { readonly multiple: true }
-        ? ['can be specified multiple.']
-        : []),
-      ...(OPT extends { readonly constraints: infer CONSTRAINTS }
-        ? CONSTRAINTS extends RegExp
-          ? TYPE extends string
-            ? ['is checked by the regular expression.']
-            : TYPE extends readonly string[]
-            ? ['is checked by the regular expression.']
-            : []
-          : CONSTRAINTS extends readonly unknown[]
-          ? TYPE extends string | number
-            ? CONSTRAINTS extends readonly TYPE[]
-              ? [`is either ${Join<CONSTRAINTS>}.`]
+          : []),
+        ...(OPT extends { readonly multiple: true }
+          ? ['can be specified multiple.']
+          : []),
+        ...(OPT extends { readonly constraints: infer CONSTRAINTS }
+          ? CONSTRAINTS extends RegExp
+            ? TYPE extends string
+              ? ['is checked by the regular expression.']
+              : TYPE extends readonly string[]
+              ? ['is checked by the regular expression.']
+              : []
+            : CONSTRAINTS extends readonly unknown[]
+            ? TYPE extends string | number
+              ? CONSTRAINTS extends readonly TYPE[]
+                ? [`is either ${Join<CONSTRAINTS>}.`]
+                : []
+              : []
+            : CONSTRAINTS extends Record<string, number>
+            ? TYPE extends number
+              ? RangeConstraints<CONSTRAINTS>
+              : TYPE extends readonly number[]
+              ? RangeConstraints<CONSTRAINTS>
               : []
             : []
-          : CONSTRAINTS extends Record<string, number>
-          ? TYPE extends number
-            ? RangeConstraints<CONSTRAINTS>
-            : TYPE extends readonly number[]
-            ? RangeConstraints<CONSTRAINTS>
-            : []
-          : []
-        : []),
-    ]
-  : [];
+          : []),
+      ]
+    >
+  : never;
 
 /**
  * 型同士が一致するかどうかを返す型関数。
@@ -518,24 +523,23 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
                 | string
                 | number
             ? {
-                readonly [K in N]: DescribedType<
-                  OptType,
-                  PropertyDescription<OptType, N, OPTMAP[N]>
-                >;
+                readonly [K in N]: PropertyDescribedType<OptType, N, OPTMAP[N]>;
               }
             : // multipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
             ? {
-                readonly [K in N]: DescribedType<
+                readonly [K in N]: PropertyDescribedType<
                   readonly OptType[],
-                  PropertyDescription<readonly OptType[], N, OPTMAP[N]>
+                  N,
+                  OPTMAP[N]
                 >;
               }
             : // それ以外は存在していない可能性のあるプロパティ
               {
-                readonly [K in N]?: DescribedType<
+                readonly [K in N]?: PropertyDescribedType<
                   OptType,
-                  PropertyDescription<OptType, N, OPTMAP[N]>
+                  N,
+                  OPTMAP[N]
                 >;
               }
           : // プロパティキーが文字列以外の場合は除外
@@ -558,9 +562,10 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
     : never]: N extends string
     ? Normalize<
         {
-          readonly [K in N]: DescribedType<
+          readonly [K in N]: PropertyDescribedType<
             OptionType<OPTMAP[N]>,
-            PropertyDescription<OptionType<OPTMAP[N]>, N, OPTMAP[N]>
+            N,
+            OPTMAP[N]
           >;
         } & {
           readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
