@@ -991,3 +991,187 @@ describe('combination error', () => {
     ).toThrow('The --nnn cannot be set to both multiple and default value.');
   });
 });
+
+// 型だけチェック
+describe('type check', () => {
+  test('named property', () => {
+    expect(parse({ aaa: {} } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa parameter']> | undefined
+    >();
+    expect(parse({ aaa: { describe: 'abcdef' } } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa parameter: abcdef']> | undefined
+    >();
+    expect(parse({ aaa: { example: 'AAA' } } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa AAA']> | undefined
+    >();
+    expect(parse({ aaa: { alone: true } } as const, []).aaa).toEqualType<
+      | DescribedType<string, ['--aaa parameter', 'is specified alone.']>
+      | undefined
+    >();
+    expect(parse({ aaa: { required: true } } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa parameter', 'is specified always.']>
+    >();
+    expect(parse({ aaa: { default: 'abc' } } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa parameter', "as 'abc' if omitted."]>
+    >();
+    expect(parse({ aaa: { multiple: true } } as const, []).aaa).toEqualType<
+      DescribedType<
+        readonly string[],
+        ['--aaa parameter', 'can be specified multiple.']
+      >
+    >();
+    expect(parse({ aaa: { constraints: /abc/ } } as const, []).aaa).toEqualType<
+      | DescribedType<
+          string,
+          ['--aaa parameter', 'is checked by the regular expression.']
+        >
+      | undefined
+    >();
+    expect(
+      parse({ aaa: { constraints: ['abc', 'def', 'ghi'] } } as const, []).aaa,
+    ).toEqualType<
+      | DescribedType<
+          'abc' | 'def' | 'ghi',
+          ['--aaa parameter' /*"is either 'abc', 'def', 'ghi'."*/]
+        >
+      | undefined
+    >();
+    expect(
+      parse({ aaa: { type: 'number', constraints: [123, 456, 789] } } as const)
+        .aaa,
+    ).toEqualType<
+      | DescribedType<
+          123 | 456 | 789,
+          ['--aaa parameter' /*'is either 123, 456, 789.'*/]
+        >
+      | undefined
+    >();
+    expect(
+      parse({ aaa: { type: 'number', constraints: { min: 10 } } } as const, [])
+        .aaa,
+    ).toEqualType<
+      DescribedType<number, ['--aaa parameter', 'is at least 10.']> | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: { type: 'number', constraints: { minExclusive: 10 } },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      | DescribedType<number, ['--aaa parameter', 'is greater than 10.']>
+      | undefined
+    >();
+    expect(
+      parse({ aaa: { type: 'number', constraints: { max: 20 } } } as const, [])
+        .aaa,
+    ).toEqualType<
+      DescribedType<number, ['--aaa parameter', 'is at most 20.']> | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: { type: 'number', constraints: { maxExclusive: 20 } },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      DescribedType<number, ['--aaa parameter', 'is less than 20.']> | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: { type: 'number', constraints: { min: 10, max: 20 } },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      | DescribedType<
+          number,
+          ['--aaa parameter', 'is at least 10.', 'is at most 20.']
+        >
+      | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: {
+            type: 'number',
+            constraints: { minExclusive: 10, maxExclusive: 20 },
+          },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      | DescribedType<
+          number,
+          ['--aaa parameter', 'is greater than 10.', 'is less than 20.']
+        >
+      | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: { type: 'number', constraints: { minExclusive: 10, max: 20 } },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      | DescribedType<
+          number,
+          ['--aaa parameter', 'is greater than 10.', 'is at most 20.']
+        >
+      | undefined
+    >();
+    expect(
+      parse(
+        {
+          aaa: { type: 'number', constraints: { min: 10, maxExclusive: 20 } },
+        } as const,
+        [],
+      ).aaa,
+    ).toEqualType<
+      | DescribedType<
+          number,
+          ['--aaa parameter', 'is at least 10.', 'is less than 20.']
+        >
+      | undefined
+    >();
+    expect(
+      parse({ aaa: { multiple: true, constraints: /abc/ } } as const, []).aaa,
+    ).toEqualType<
+      DescribedType<
+        readonly string[],
+        [
+          '--aaa parameter',
+          'can be specified multiple.',
+          'is checked by the regular expression.',
+        ]
+      >
+    >();
+    expect(parse({ aaa: 'abc' } as const, []).aaa).toEqualType<
+      DescribedType<string, ['--aaa parameter', "as 'abc' if omitted."]>
+    >();
+    expect(parse({ aaa: 123 } as const, []).aaa).toEqualType<
+      DescribedType<number, ['--aaa parameter', 'as 123 if omitted.']>
+    >();
+    expect(parse({ aaa: true } as const, []).aaa).toEqualType<
+      DescribedType<true, ['--aaa']> | undefined
+    >();
+  });
+  test('unnamed', () => {
+    expect(parse({ aaa: {} } as const, [])[unnamed]).toEqualType<
+      readonly string[]
+    >();
+    expect(parse({ aaa: { alone: true } } as const, [])[unnamed]).toEqualType<
+      readonly string[] | undefined
+    >();
+  });
+  test('help string', () => {
+    expect(parse({ aaa: {} } as const, [])[helpString]).toEqualType<string>();
+    expect(
+      parse({ aaa: { alone: true } } as const, [])[helpString],
+    ).toEqualType<string>();
+  });
+});
