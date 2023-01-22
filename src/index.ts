@@ -22,16 +22,21 @@ export type DescribedType<TYPE, DESCRIPTION> = DESCRIPTION extends string[]
  */
 type Hyphenate<NAME extends string> =
   NAME extends `${infer _}${infer _}${infer _}` ? `--${NAME}` : `-${NAME}`;
+/** ケバブケースをキャメルケースに変換 */
+type CamelCase<KEBABCASE extends string> =
+  KEBABCASE extends `${infer FIRST}-${infer REST}`
+    ? CamelCase<`${FIRST}${Capitalize<REST>}`>
+    : KEBABCASE;
 
 /**
  * 配列を連結する
  */
-type Join<A extends readonly (string | number)[]> = A extends [
+type Join<A extends readonly (string | number)[]> = A extends readonly [
   infer FIRST,
   ...infer REST,
 ]
   ? FIRST extends string | number
-    ? REST extends [string | number, ...(string | number)[]]
+    ? REST extends readonly [string | number, ...(string | number)[]]
       ? `${FIRST extends string ? `'${FIRST}'` : FIRST}, ${Join<REST>}`
       : FIRST extends string
       ? `'${FIRST}'`
@@ -118,11 +123,9 @@ type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
               : TYPE extends readonly string[]
               ? ['is checked by the regular expression.']
               : []
-            : CONSTRAINTS extends readonly unknown[]
+            : CONSTRAINTS extends readonly (string | number)[]
             ? TYPE extends string | number
-              ? CONSTRAINTS extends readonly TYPE[]
-                ? [`is either ${Join<CONSTRAINTS>}.`]
-                : []
+              ? [`is either ${Join<CONSTRAINTS>}.`]
               : []
             : CONSTRAINTS extends Record<string, number>
             ? TYPE extends number
@@ -175,10 +178,25 @@ type Validate<T extends true> = T;
 type _TEST_Hyphenate1 = Validate<TypeTest<Hyphenate<'a'>, '-a'>>;
 type _TEST_Hyphenate2 = Validate<TypeTest<Hyphenate<'aa'>, '--aa'>>;
 
+type _TEST_CamelCase1 = Validate<TypeTest<CamelCase<''>, ''>>;
+type _TEST_CamelCase2 = Validate<TypeTest<CamelCase<'abc'>, 'abc'>>;
+type _TEST_CamelCase3 = Validate<TypeTest<CamelCase<'ABC'>, 'ABC'>>;
+type _TEST_CamelCase4 = Validate<TypeTest<CamelCase<'abc-def'>, 'abcDef'>>;
+type _TEST_CamelCase5 = Validate<TypeTest<CamelCase<'ABC-def'>, 'ABCDef'>>;
+type _TEST_CamelCase6 = Validate<TypeTest<CamelCase<'abc-DEF'>, 'abcDEF'>>;
+type _TEST_CamelCase7 = Validate<TypeTest<CamelCase<'ABC-DEF'>, 'ABCDEF'>>;
+
 type _TEST_Join1 = Validate<TypeTest<Join<[]>, ''>>;
 type _TEST_Join2 = Validate<TypeTest<Join<[123, 456, 789]>, '123, 456, 789'>>;
 type _TEST_Join3 = Validate<
   TypeTest<Join<['abc', 'def', 'ghi']>, "'abc', 'def', 'ghi'">
+>;
+type _TEST_Join4 = Validate<TypeTest<Join<readonly []>, ''>>;
+type _TEST_Join5 = Validate<
+  TypeTest<Join<readonly [123, 456, 789]>, '123, 456, 789'>
+>;
+type _TEST_Join6 = Validate<
+  TypeTest<Join<readonly ['abc', 'def', 'ghi']>, "'abc', 'def', 'ghi'">
 >;
 
 /**
@@ -513,9 +531,8 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
       [N in keyof OPTMAP]: OptionType<OPTMAP[N]> extends infer OptType
         ? N extends string
           ? // aloneが指定されているものは存在しないプロパティ
-
             OPTMAP[N] extends { alone: true }
-            ? { readonly [K in N]?: never }
+            ? { readonly [K in N as CamelCase<K>]?: never }
             : // requiredやdefaultが指定されているものは必ず存在しているプロパティ
             OPTMAP[N] extends
                 | { required: true }
@@ -523,12 +540,16 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
                 | string
                 | number
             ? {
-                readonly [K in N]: PropertyDescribedType<OptType, N, OPTMAP[N]>;
+                readonly [K in N as CamelCase<K>]: PropertyDescribedType<
+                  OptType,
+                  N,
+                  OPTMAP[N]
+                >;
               }
             : // multipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
             ? {
-                readonly [K in N]: PropertyDescribedType<
+                readonly [K in N as CamelCase<K>]: PropertyDescribedType<
                   readonly OptType[],
                   N,
                   OPTMAP[N]
@@ -536,7 +557,7 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
               }
             : // それ以外は存在していない可能性のあるプロパティ
               {
-                readonly [K in N]?: PropertyDescribedType<
+                readonly [K in N as CamelCase<K>]?: PropertyDescribedType<
                   OptType,
                   N,
                   OPTMAP[N]
@@ -562,13 +583,16 @@ type OptionsAlone<OPTMAP extends OptionInformationMap> = Values<{
     : never]: N extends string
     ? Normalize<
         {
-          readonly [K in N]: PropertyDescribedType<
+          readonly [K in N as CamelCase<K>]: PropertyDescribedType<
             OptionType<OPTMAP[N]>,
             N,
             OPTMAP[N]
           >;
         } & {
-          readonly [K in Exclude<keyof OPTMAP, N | symbol | number>]?: never;
+          readonly [K in Exclude<
+            keyof OPTMAP,
+            N | symbol | number
+          > as CamelCase<K>]?: never;
         } & {
           readonly [unnamed]?: never;
           readonly [helpString]: string;
@@ -662,13 +686,28 @@ function example(info: { example?: string }, unnamed?: true): string {
  * @returns
  */
 function hyphenate(name: string): `${'--' | '-'}${string}` {
-  if (name.length === 0) {
-    throw new Error('empty option name');
-  }
-  if (name.charAt(0) === '-') {
-    throw new Error(`Invalid option name: ${name}`);
-  }
+  // 空文字列はエラー
+  assert(name.length, 'empty option name');
+  // 先頭や末尾に`-`があればエラー
+  assert(name.charAt(0) !== '-', `Invalid option name: ${name}`);
+  assert(name.charAt(name.length - 1) !== '-', `Invalid option name: ${name}`);
   return `${name.length > 1 ? '--' : '-'}${name}`;
+}
+
+/**
+ * ケバブケースをキャメルケースに変換
+ * @param kebabCase キャメルケースに変換するケバブケース
+ * @returns ケバブケースからキャメルケースに変換した文字列。
+ *
+ * `kebabCase`が`-`を含まない場合は元の文字列を返す。
+ */
+function camelCase<KEBABCASE extends string>(
+  kebabCase: KEBABCASE,
+): CamelCase<KEBABCASE> {
+  return kebabCase.replace(
+    /(?<!^)-[^-]+/g,
+    word => `${word.charAt(1).toUpperCase()}${word.slice(2)}`,
+  ) as CamelCase<KEBABCASE>;
 }
 
 /**
@@ -846,17 +885,41 @@ function initParseContext<OptMap extends OptionInformationMap>(
 function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
   const map: Record<
     string,
-    { name: string; info: NumberOption | FlagOption | StringOption }
+    {
+      name: string;
+      entryName: string;
+      info: NumberOption | FlagOption | StringOption;
+    }
   > = {};
   for (const [name, _info] of Object.entries(optMap)) {
     const info = normalizeOptInfo(_info);
-    const value = { name, info };
-    map[hyphenate(name)] = value;
+    const camelCaseName = camelCase(name);
+    const { entryName: existName } =
+      Object.values(map).find(({ name }) => name === camelCaseName) ?? {};
+    // キャメルケースにすることで別のオプションと同名になる場合はエラー
+    assert(
+      existName === undefined,
+      `Duplicate option name: ${name}, ${existName ?? ''}`,
+    );
+    const hyphenateName = hyphenate(name);
+    // 他のオプションでAliasが設定されている名前であればエラー
+    assert(
+      !(hyphenateName in map),
+      `Duplicate alias name: ${name}, ${map[hyphenateName]?.entryName}`,
+    );
+    const value = { name: camelCaseName, entryName: name, info };
+    map[hyphenateName] = value;
     if (!info.alias) {
       continue;
     }
     for (const alias of Array.isArray(info.alias) ? info.alias : [info.alias]) {
-      map[hyphenate(alias)] = value;
+      const hyphenateAlias = hyphenate(alias);
+      // 他のオプションやAliasが設定されている名前であればエラー
+      assert(
+        !(hyphenateAlias in map),
+        `Duplicate alias name: ${name}, ${map[hyphenateAlias]?.entryName}`,
+      );
+      map[hyphenateAlias] = value;
     }
   }
   return map;

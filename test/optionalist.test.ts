@@ -113,6 +113,30 @@ test('optionalist unnamed', () => {
     [unnamed]: ['--aaa', '-bbb', '-ccc'],
   });
 });
+test('optionalist string default optMap', () => {
+  expect(parse({ aaa: { default: 'aaa' } }, []).aaa).toBe('aaa');
+});
+test('optionalist number default optMap', () => {
+  expect(parse({ aaa: { type: 'number', default: 123 } }, []).aaa).toBe(123);
+});
+test('optionalist string default literal', () => {
+  expect(parse({ aaa: 'aaa' }, []).aaa).toBe('aaa');
+});
+test('optionalist number default literal', () => {
+  expect(parse({ aaa: 123 }, []).aaa).toBe(123);
+});
+test('optionalist string default optMap falsy', () => {
+  expect(parse({ aaa: { default: '' } }, []).aaa).toBe('');
+});
+test('optionalist number default optMap falsy', () => {
+  expect(parse({ aaa: { type: 'number', default: 0 } }, []).aaa).toBe(0);
+});
+test('optionalist string default literal falsy', () => {
+  expect(parse({ aaa: '' }, []).aaa).toBe('');
+});
+test('optionalist number default literal falsy', () => {
+  expect(parse({ aaa: 0 }, []).aaa).toBe(0);
+});
 test('optionalist string constraints', () => {
   expect(
     parse(OPTMAP, ['--delta', 'required', '--golf', 'volkswagen']),
@@ -1008,7 +1032,9 @@ describe('type check', () => {
       | DescribedType<string, ['--aaa parameter', 'is specified alone.']>
       | undefined
     >();
-    expect(parse({ aaa: { required: true } } as const, []).aaa).toEqualType<
+    expect(
+      parse({ aaa: { required: true } } as const, ['--aaa', 'aaa']).aaa,
+    ).toEqualType<
       DescribedType<string, ['--aaa parameter', 'is specified always.']>
     >();
     expect(parse({ aaa: { default: 'abc' } } as const, []).aaa).toEqualType<
@@ -1032,7 +1058,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           'abc' | 'def' | 'ghi',
-          ['--aaa parameter' /*"is either 'abc', 'def', 'ghi'."*/]
+          ['--aaa parameter', "is either 'abc', 'def', 'ghi'."]
         >
       | undefined
     >();
@@ -1042,7 +1068,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           123 | 456 | 789,
-          ['--aaa parameter' /*'is either 123, 456, 789.'*/]
+          ['--aaa parameter', 'is either 123, 456, 789.']
         >
       | undefined
     >();
@@ -1173,5 +1199,95 @@ describe('type check', () => {
     expect(
       parse({ aaa: { alone: true } } as const, [])[helpString],
     ).toEqualType<string>();
+  });
+});
+
+describe('camel case', () => {
+  test('empty', () => {
+    expect(parse({ 'abc-def': '' }, []).abcDef).toBe('');
+  });
+  test('1st', () => {
+    expect(parse({ 'abc-def': '' }, ['--abc-def', 'test']).abcDef).toBe('test');
+  });
+  test('2nd', () => {
+    expect(() => parse({ 'abc-def': '' }, ['--abcDef', 'test'])).toThrow(
+      'unknown',
+    );
+  });
+});
+
+describe('double camel case', () => {
+  test('empty', () => {
+    const options = parse(
+      {
+        'abc-def': '',
+        'ghi-jkl': 0,
+      },
+      [],
+    );
+    expect(options.abcDef).toBe('');
+    expect(options.ghiJkl).toBe(0);
+  });
+  test('1st', () => {
+    const options = parse(
+      {
+        'abc-def': '',
+        'ghi-jkl': 0,
+      },
+      ['--abc-def', 'test'],
+    );
+    expect(options.abcDef).toBe('test');
+    expect(options.ghiJkl).toBe(0);
+  });
+  test('2nd', () => {
+    const options = parse(
+      {
+        'abc-def': '',
+        'ghi-jkl': 0,
+      },
+      ['--ghi-jkl', '123'],
+    );
+    expect(options.abcDef).toBe('');
+    expect(options.ghiJkl).toBe(123);
+  });
+  test('3rd', () => {
+    const options = parse(
+      {
+        'abc-def': '',
+        'ghi-jkl': 0,
+      },
+      ['--abc-def', 'test', '--ghi-jkl', '123'],
+    );
+    expect(options.abcDef).toBe('test');
+    expect(options.ghiJkl).toBe(123);
+  });
+});
+
+describe('invalid name', () => {
+  test('last hyphen', () => {
+    expect(() => parse({ 'abc-': 0 }, [])).toThrow('Invalid option name: abc-');
+  });
+  test('first hyphen', () => {
+    expect(() => parse({ '-def': 0 }, [])).toThrow('Invalid option name: -def');
+  });
+  test('duplicate name', () => {
+    expect(() => parse({ abcDef: '', 'abc-def': 0 }, [])).toThrow(
+      'Duplicate option name: abc-def, abcDef',
+    );
+  });
+  test('duplicate name#2', () => {
+    expect(() => parse({ abc012: '', 'abc-012': 0 }, [])).toThrow(
+      'Duplicate option name: abc-012, abc012',
+    );
+  });
+  test('duplicate name#3', () => {
+    expect(() =>
+      parse({ abc: { alias: 'abc-def' }, 'abc-def': 0 }, []),
+    ).toThrow('Duplicate alias name: abc-def, abc');
+  });
+  test('duplicate name#4', () => {
+    expect(() =>
+      parse({ 'abc-def': 0, abc: { alias: 'abc-def' } }, []),
+    ).toThrow('Duplicate alias name: abc, abc-def');
   });
 });
