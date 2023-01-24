@@ -678,7 +678,10 @@ describe('type check Options', () => {
     assertToBeDefined(options.ddd);
     // dddが有効な場合はdddとhelpStringだけ使える
     expect(options.ddd).toEqualType<
-      DescribedType<string, ['--ddd parameter: ddd', 'is specified alone.']>
+      DescribedType<
+        string,
+        ['--ddd parameter: ddd', 'must be specified alone.']
+      >
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -712,7 +715,10 @@ describe('type check Options', () => {
     assertToBeDefined(options.hhh);
     // hhhが有効な場合はhhhとhelpStringだけ使える
     expect(options.hhh).toEqualType<
-      DescribedType<number, ['--hhh parameter: hhh', 'is specified alone.']>
+      DescribedType<
+        number,
+        ['--hhh parameter: hhh', 'must be specified alone.']
+      >
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -746,7 +752,7 @@ describe('type check Options', () => {
     assertToBeDefined(options.jjj);
     // jjjが有効な場合はjjjとhelpStringだけ使える
     expect(options.jjj).toEqualType<
-      DescribedType<true, ['--jjj: jjj', 'is specified alone.']>
+      DescribedType<true, ['--jjj: jjj', 'must be specified alone.']>
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -780,7 +786,10 @@ describe('type check Options', () => {
     assertToBeDefined(options.nnn);
     // nnnが有効な場合はnnnとhelpStringだけ使える
     expect(options.nnn).toEqualType<
-      DescribedType<string, ['--nnn parameter: nnn', 'is specified alone.']>
+      DescribedType<
+        string,
+        ['--nnn parameter: nnn', 'must be specified alone.']
+      >
     >();
     expect(options[helpString]).toEqualType<string>();
     // その他のオプションは使えない
@@ -833,19 +842,31 @@ describe('type check Options', () => {
       DescribedType<string, ['--aaa parameter: aaa']> | undefined
     >();
     expect(options.bbb).toEqualType<
-      DescribedType<string, ['--bbb parameter: bbb', 'is specified always.']>
+      DescribedType<
+        string,
+        ['--bbb parameter: bbb', 'must be specified always.']
+      >
     >();
     expect(options.ccc).toEqualType<
-      DescribedType<string, ['--ccc parameter: ccc', "as 'abc' if omitted."]>
+      DescribedType<
+        string,
+        ['--ccc parameter: ccc', "is equal to 'abc' if omitted."]
+      >
     >();
     expect(options.eee).toEqualType<
       DescribedType<number, ['--eee parameter: eee']> | undefined
     >();
     expect(options.fff).toEqualType<
-      DescribedType<number, ['--fff parameter: fff', 'is specified always.']>
+      DescribedType<
+        number,
+        ['--fff parameter: fff', 'must be specified always.']
+      >
     >();
     expect(options.ggg).toEqualType<
-      DescribedType<number, ['--ggg parameter: ggg', 'as 1 if omitted.']>
+      DescribedType<
+        number,
+        ['--ggg parameter: ggg', 'is equal to 1 if omitted.']
+      >
     >();
     expect(options.iii).toEqualType<
       DescribedType<true, ['--iii: iii']> | undefined
@@ -854,35 +875,44 @@ describe('type check Options', () => {
       DescribedType<string, ['--kkk parameter: kkk']> | undefined
     >();
     expect(options.lll).toEqualType<
-      DescribedType<string, ['--lll parameter: lll', 'is specified always.']>
+      DescribedType<
+        string,
+        ['--lll parameter: lll', 'must be specified always.']
+      >
     >();
     expect(options.mmm).toEqualType<
-      DescribedType<string, ['--mmm parameter: mmm', "as 'abc' if omitted."]>
+      DescribedType<
+        string,
+        ['--mmm parameter: mmm', "is equal to 'abc' if omitted."]
+      >
     >();
     expect(options.ooo).toEqualType<
       DescribedType<
         readonly string[],
-        ['--ooo parameter: ooo', 'can be specified multiple.']
+        ['--ooo parameter: ooo', 'can be specified more than once.']
       >
     >();
     expect(options.ppp).toEqualType<
       DescribedType<
         readonly number[],
-        ['--ppp parameter: ppp', 'can be specified multiple.']
+        ['--ppp parameter: ppp', 'can be specified more than once.']
       >
     >();
     expect(options.qqq).toEqualType<
       DescribedType<
         readonly string[],
-        ['--qqq parameter: qqq', 'can be specified multiple.']
+        ['--qqq parameter: qqq', 'can be specified more than once.']
       >
     >();
     // 簡易指定なオプションは説明文がつかない
     expect(options.rrr).toEqualType<
-      DescribedType<string, ['--rrr parameter', "as 'rrr' if omitted."]>
+      DescribedType<
+        string,
+        ['--rrr parameter', "is equal to 'rrr' if omitted."]
+      >
     >();
     expect(options.sss).toEqualType<
-      DescribedType<number, ['--sss parameter', 'as 123 if omitted.']>
+      DescribedType<number, ['--sss parameter', 'is equal to 123 if omitted.']>
     >();
     expect(options.ttt).toEqualType<
       DescribedType<true, ['--ttt']> | undefined
@@ -890,7 +920,7 @@ describe('type check Options', () => {
     expect(options.uuu).toEqualType<
       DescribedType<
         readonly ('uuu' | 'vvv' | 'www')[],
-        ['--uuu parameter: uuu', 'can be specified multiple.']
+        ['--uuu parameter: uuu', 'can be specified more than once.']
       >
     >();
     expect(options.vvv).toEqualType<
@@ -898,15 +928,15 @@ describe('type check Options', () => {
         readonly string[],
         [
           '--vvv parameter: vvv',
-          'can be specified multiple.',
-          'is checked by the regular expression.',
+          'can be specified more than once.',
+          'must match the regular expression.',
         ]
       >
     >();
     expect(options.www).toEqualType<
       DescribedType<
         readonly (123 | 456 | 789)[],
-        ['--www parameter: www', 'can be specified multiple.']
+        ['--www parameter: www', 'can be specified more than once.']
       >
     >();
     expect(options.xxx).toEqualType<
@@ -914,9 +944,9 @@ describe('type check Options', () => {
         readonly number[],
         [
           '--xxx parameter: xxx',
-          'can be specified multiple.',
-          'is at least 10.',
-          'is less than 100.',
+          'can be specified more than once.',
+          'must be 10 or greater.',
+          'must be less than 100.',
         ]
       >
     >();
@@ -1029,27 +1059,30 @@ describe('type check', () => {
       DescribedType<string, ['--aaa AAA']> | undefined
     >();
     expect(parse({ aaa: { alone: true } } as const, []).aaa).toEqualType<
-      | DescribedType<string, ['--aaa parameter', 'is specified alone.']>
+      | DescribedType<string, ['--aaa parameter', 'must be specified alone.']>
       | undefined
     >();
     expect(
       parse({ aaa: { required: true } } as const, ['--aaa', 'aaa']).aaa,
     ).toEqualType<
-      DescribedType<string, ['--aaa parameter', 'is specified always.']>
+      DescribedType<string, ['--aaa parameter', 'must be specified always.']>
     >();
     expect(parse({ aaa: { default: 'abc' } } as const, []).aaa).toEqualType<
-      DescribedType<string, ['--aaa parameter', "as 'abc' if omitted."]>
+      DescribedType<
+        string,
+        ['--aaa parameter', "is equal to 'abc' if omitted."]
+      >
     >();
     expect(parse({ aaa: { multiple: true } } as const, []).aaa).toEqualType<
       DescribedType<
         readonly string[],
-        ['--aaa parameter', 'can be specified multiple.']
+        ['--aaa parameter', 'can be specified more than once.']
       >
     >();
     expect(parse({ aaa: { constraints: /abc/ } } as const, []).aaa).toEqualType<
       | DescribedType<
           string,
-          ['--aaa parameter', 'is checked by the regular expression.']
+          ['--aaa parameter', 'must match the regular expression.']
         >
       | undefined
     >();
@@ -1058,7 +1091,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           'abc' | 'def' | 'ghi',
-          ['--aaa parameter', "is either 'abc', 'def', 'ghi'."]
+          ['--aaa parameter', "must be either 'abc', 'def', 'ghi'."]
         >
       | undefined
     >();
@@ -1068,7 +1101,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           123 | 456 | 789,
-          ['--aaa parameter', 'is either 123, 456, 789.']
+          ['--aaa parameter', 'must be either 123, 456, 789.']
         >
       | undefined
     >();
@@ -1076,7 +1109,8 @@ describe('type check', () => {
       parse({ aaa: { type: 'number', constraints: { min: 10 } } } as const, [])
         .aaa,
     ).toEqualType<
-      DescribedType<number, ['--aaa parameter', 'is at least 10.']> | undefined
+      | DescribedType<number, ['--aaa parameter', 'must be 10 or greater.']>
+      | undefined
     >();
     expect(
       parse(
@@ -1086,14 +1120,15 @@ describe('type check', () => {
         [],
       ).aaa,
     ).toEqualType<
-      | DescribedType<number, ['--aaa parameter', 'is greater than 10.']>
+      | DescribedType<number, ['--aaa parameter', 'must be greater than 10.']>
       | undefined
     >();
     expect(
       parse({ aaa: { type: 'number', constraints: { max: 20 } } } as const, [])
         .aaa,
     ).toEqualType<
-      DescribedType<number, ['--aaa parameter', 'is at most 20.']> | undefined
+      | DescribedType<number, ['--aaa parameter', 'must be 20 or less.']>
+      | undefined
     >();
     expect(
       parse(
@@ -1103,7 +1138,8 @@ describe('type check', () => {
         [],
       ).aaa,
     ).toEqualType<
-      DescribedType<number, ['--aaa parameter', 'is less than 20.']> | undefined
+      | DescribedType<number, ['--aaa parameter', 'must be less than 20.']>
+      | undefined
     >();
     expect(
       parse(
@@ -1115,7 +1151,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           number,
-          ['--aaa parameter', 'is at least 10.', 'is at most 20.']
+          ['--aaa parameter', 'must be 10 or greater.', 'must be 20 or less.']
         >
       | undefined
     >();
@@ -1132,7 +1168,11 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           number,
-          ['--aaa parameter', 'is greater than 10.', 'is less than 20.']
+          [
+            '--aaa parameter',
+            'must be greater than 10.',
+            'must be less than 20.',
+          ]
         >
       | undefined
     >();
@@ -1146,7 +1186,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           number,
-          ['--aaa parameter', 'is greater than 10.', 'is at most 20.']
+          ['--aaa parameter', 'must be greater than 10.', 'must be 20 or less.']
         >
       | undefined
     >();
@@ -1160,7 +1200,7 @@ describe('type check', () => {
     ).toEqualType<
       | DescribedType<
           number,
-          ['--aaa parameter', 'is at least 10.', 'is less than 20.']
+          ['--aaa parameter', 'must be 10 or greater.', 'must be less than 20.']
         >
       | undefined
     >();
@@ -1171,16 +1211,19 @@ describe('type check', () => {
         readonly string[],
         [
           '--aaa parameter',
-          'can be specified multiple.',
-          'is checked by the regular expression.',
+          'can be specified more than once.',
+          'must match the regular expression.',
         ]
       >
     >();
     expect(parse({ aaa: 'abc' } as const, []).aaa).toEqualType<
-      DescribedType<string, ['--aaa parameter', "as 'abc' if omitted."]>
+      DescribedType<
+        string,
+        ['--aaa parameter', "is equal to 'abc' if omitted."]
+      >
     >();
     expect(parse({ aaa: 123 } as const, []).aaa).toEqualType<
-      DescribedType<number, ['--aaa parameter', 'as 123 if omitted.']>
+      DescribedType<number, ['--aaa parameter', 'is equal to 123 if omitted.']>
     >();
     expect(parse({ aaa: true } as const, []).aaa).toEqualType<
       DescribedType<true, ['--aaa']> | undefined

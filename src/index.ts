@@ -50,26 +50,26 @@ type RangeConstraints<CONSTRAINTS> = CONSTRAINTS extends Record<string, number>
         ? MIN extends number
           ? number extends MIN
             ? []
-            : [`is at least ${MIN}.`]
+            : [`must be ${MIN} or greater.`]
           : []
         : CONSTRAINTS extends { minExclusive: infer MIN }
         ? MIN extends number
           ? number extends MIN
             ? []
-            : [`is greater than ${MIN}.`]
+            : [`must be greater than ${MIN}.`]
           : []
         : []),
       ...(CONSTRAINTS extends { max: infer MAX }
         ? MAX extends number
           ? number extends MAX
             ? []
-            : [`is at most ${MAX}.`]
+            : [`must be ${MAX} or less.`]
           : []
         : CONSTRAINTS extends { maxExclusive: infer MAX }
         ? MAX extends number
           ? number extends MAX
             ? []
-            : [`is less than ${MAX}.`]
+            : [`must be less than ${MAX}.`]
           : []
         : []),
     ]
@@ -90,11 +90,11 @@ type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
           : ''}`,
         ...(TYPE extends string | number
           ? OPT extends { readonly required: true }
-            ? ['is specified always.']
+            ? ['must be specified always.']
             : []
           : []),
         ...(OPT extends { readonly alone: true }
-          ? ['is specified alone.']
+          ? ['must be specified alone.']
           : []),
         ...(TYPE extends string | number
           ? OPT extends { readonly default: infer DEFAULT }
@@ -102,7 +102,7 @@ type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
               ? TYPE extends DEFAULT
                 ? []
                 : [
-                    `as ${DEFAULT extends string
+                    `is equal to ${DEFAULT extends string
                       ? `'${DEFAULT}'`
                       : DEFAULT} if omitted.`,
                   ]
@@ -110,22 +110,26 @@ type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
             : OPT extends string | number
             ? TYPE extends OPT
               ? []
-              : [`as ${OPT extends string ? `'${OPT}'` : OPT} if omitted.`]
+              : [
+                  `is equal to ${OPT extends string
+                    ? `'${OPT}'`
+                    : OPT} if omitted.`,
+                ]
             : []
           : []),
         ...(OPT extends { readonly multiple: true }
-          ? ['can be specified multiple.']
+          ? ['can be specified more than once.']
           : []),
         ...(OPT extends { readonly constraints: infer CONSTRAINTS }
           ? CONSTRAINTS extends RegExp
             ? TYPE extends string
-              ? ['is checked by the regular expression.']
+              ? ['must match the regular expression.']
               : TYPE extends readonly string[]
-              ? ['is checked by the regular expression.']
+              ? ['must match the regular expression.']
               : []
             : CONSTRAINTS extends readonly (string | number)[]
             ? TYPE extends string | number
-              ? [`is either ${Join<CONSTRAINTS>}.`]
+              ? [`must be either ${Join<CONSTRAINTS>}.`]
               : []
             : CONSTRAINTS extends Record<string, number>
             ? TYPE extends number
