@@ -1333,4 +1333,19 @@ describe('invalid name', () => {
       parse({ 'abc-def': 0, abc: { alias: 'abc-def' } }, []),
     ).toThrow('Duplicate alias name: abc, abc-def');
   });
+  test('deprecated property: nature: alone', () => {
+    expect(() =>
+      parse({ abc: { type: 'boolean', nature: 'alone' } }, []),
+    ).toThrow(`The property 'nature' is deprecated. Please use 'alone': abc`);
+  });
+  test('deprecated property: nature: required', () => {
+    expect(() =>
+      parse({ abc: { type: 'number', nature: 'required' } }, []),
+    ).toThrow(`The property 'nature' is deprecated. Please use 'required': abc`);
+  });
+  test('deprecated property: nature: default', () => {
+    expect(() =>
+      parse({ abc: { type: 'number', nature: ['default', 1] } }, []),
+    ).toThrow(`The property 'nature' is deprecated. Please use 'default': abc`);
+  });
 });

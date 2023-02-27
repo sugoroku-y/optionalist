@@ -755,26 +755,22 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
     switch (type) {
       case undefined:
       case 'string':
-        if (info.default !== undefined) {
-          // string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはずだが念の為
-          assert(
-            typeof info.default === 'string',
-            `The default value of the ${hyphenate(
-              name,
-            )} parameter must be a string.: ${info.default}`,
-          );
-        }
+        // string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはずだが念の為
+        assert(
+          info.default === undefined || typeof info.default === 'string',
+          `The default value of the ${hyphenate(
+            name,
+          )} parameter must be a string.: ${info.default}`,
+        );
         break;
       case 'number':
-        if (info.default !== undefined) {
-          // number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはずだが念の為
-          assert(
-            typeof info.default === 'number',
-            `The default value of the ${hyphenate(
-              name,
-            )} parameter must be a number.: ${info.default}`,
-          );
-        }
+        // number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはずだが念の為
+        assert(
+          info.default === undefined || typeof info.default === 'number',
+          `The default value of the ${hyphenate(
+            name,
+          )} parameter must be a number.: ${info.default}`,
+        );
         break;
       case 'boolean':
         // boolean型でrequiredを指定するとTypeScriptのエラーになるはずだが念の為
@@ -797,46 +793,42 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
           `unknown type: ${String(type)} for the ${hyphenate(name)} parameter`,
         );
     }
-    if (info.alone) {
-      // defaultとaloneは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        info.default === undefined,
-        `The ${hyphenate(name)} cannot be set to both alone and default value.`,
-      );
-      // aloneとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        !info.required,
-        `The ${hyphenate(name)} cannot be both alone and required.`,
-      );
-      // aloneとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        !info.multiple,
-        `The ${hyphenate(name)} cannot be both alone and multiple.`,
-      );
-    }
-    if (info.required) {
-      // defaultとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        info.default === undefined,
-        `The ${hyphenate(
-          name,
-        )} cannot be set to both required and default value.`,
-      );
-      // requiredとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        !info.multiple,
-        `The ${hyphenate(name)} cannot be both required and multiple.`,
-      );
-    }
-    if (info.multiple) {
-      // defaultとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-      assert(
-        info.default === undefined,
-        `The ${hyphenate(
-          name,
-        )} cannot be set to both multiple and default value.`,
-      );
-    }
+    // defaultとaloneは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.alone || info.default === undefined,
+      `The ${hyphenate(name)} cannot be set to both alone and default value.`,
+    );
+    // aloneとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.alone || !info.required,
+      `The ${hyphenate(name)} cannot be both alone and required.`,
+    );
+    // aloneとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.alone || !info.multiple,
+      `The ${hyphenate(name)} cannot be both alone and multiple.`,
+    );
+    // defaultとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.required || info.default === undefined,
+      `The ${hyphenate(
+        name,
+      )} cannot be set to both required and default value.`,
+    );
+    // requiredとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.required || !info.multiple,
+      `The ${hyphenate(name)} cannot be both required and multiple.`,
+    );
+    // defaultとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
+    assert(
+      !info.multiple || info.default === undefined,
+      `The ${hyphenate(
+        name,
+      )} cannot be set to both multiple and default value.`,
+    );
+    // natureは廃止
+    assert(!('nature' in info), `The property 'nature' is deprecated. Please use '${typeof (info as {nature: unknown}).nature === 'string' ? (info as {nature: unknown}).nature : 'default'}': ${name}`);
   }
 }
 
