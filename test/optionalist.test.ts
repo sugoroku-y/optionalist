@@ -314,19 +314,19 @@ test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
     parse({ a: { default: 1 } }, ['-a', '2']),
-  ).toThrow('The default value of the -a parameter must be a string.: 1');
+  ).toThrow();
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
     parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
-  ).toThrow('The default value of the -a parameter cannot be specified.: 1');
+  ).toThrow();
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
     parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
-  ).toThrow('The -a cannot set to be required.');
+  ).toThrow();
 });
 test('optionalist invalid optMap', () => {
   expect(() =>
@@ -335,7 +335,7 @@ test('optionalist invalid optMap', () => {
       { a: { type: 'number', default: '1' } },
       ['-a', '2'],
     ),
-  ).toThrow('The default value of the -a parameter must be a number.: 1');
+  ).toThrow();
 });
 test('optionalist helpstring', () => {
   expect(parse(OPTMAP, ['--charlie'])[helpString])
@@ -379,7 +379,7 @@ test('never', () => {
   expect(() =>
     // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
     parse({ a: { type: 'unknown', default: 1 } }, []),
-  ).toThrow('unknown type: unknown for the -a parameter');
+  ).toThrow();
 });
 
 /**
@@ -587,18 +587,58 @@ test('maxExclusive', () => {
   ).toThrow('-a must be less than 10.');
 });
 test('max&maxExclusive', () => {
-  parse(
-    // @ts-expect-error maxとmaxExclusiveは同時に指定できない
-    { a: { type: 'number', constraints: { max: 11, maxExclusive: 10 } } },
-    [],
-  );
-  parse(
-    // @ts-expect-error minとminExclusiveは同時に指定できない
-    { a: { type: 'number', constraints: { min: 11, minExclusive: 10 } } },
-    [],
-  );
+  expect(() =>
+    parse(
+      // @ts-expect-error maxとmaxExclusiveは同時に指定できない
+      { a: { type: 'number', constraints: { max: 11, maxExclusive: 10 } } },
+      [],
+    ),
+  ).toThrow();
+  expect(() =>
+    parse(
+      // @ts-expect-error minとminExclusiveは同時に指定できない
+      { a: { type: 'number', constraints: { min: 11, minExclusive: 10 } } },
+      [],
+    ),
+  ).toThrow();
   // @ts-expect-error min、minExclusive、max、maxExclusiveのどれも指定しないのはエラー
-  parse({ a: { type: 'number', constraints: {} } }, []);
+  expect(() => parse({ a: { type: 'number', constraints: {} } }, [])).toThrow();
+});
+describe('invalid constraints', () => {
+  test('empty string constraints array', () => {
+    // @ts-expect-error constraintsに空配列は指定できない
+    expect(() => parse({ a: { constraints: [] } })).toThrow();
+  });
+  test('number array to string constraints', () => {
+    // @ts-expect-error string型のconstraintsに数値の配列は指定できない
+    expect(() => parse({ a: { constraints: [1] } })).toThrow();
+  });
+  test('string to string constraints', () => {
+    // @ts-expect-error string型のconstraintsに数値の配列は指定できない
+    expect(() => parse({ a: { constraints: '' } })).toThrow();
+  });
+  test('empty number constraints array', () => {
+    // @ts-expect-error constraintsに空配列は指定できない
+    expect(() => parse({ a: { type: 'number', constraints: [] } })).toThrow();
+  });
+  test('string array to number constraints', () => {
+    // @ts-expect-error number型のconstraintsに文字列の配列は指定できない
+    expect(() => parse({ a: { type: 'number', constraints: [''] } })).toThrow();
+  });
+  test('empty object to number constraints', () => {
+    // @ts-expect-error number型のconstraintsにmin/max/minExclusive/maxExclusiveのどれも存在していないオブジェクトは指定できない
+    expect(() => parse({ a: { type: 'number', constraints: {} } })).toThrow();
+  });
+  test('string to number constraints', () => {
+    // @ts-expect-error number型のconstraintsにmin/max/minExclusive/maxExclusiveのどれも存在していないオブジェクトは指定できない
+    expect(() => parse({ a: { type: 'number', constraints: '' } })).toThrow();
+  });
+  test('any constraits to boolean', () => {
+    expect(() =>
+      // @ts-expect-error boolean型のconstraintsには指定できない
+      parse({ a: { type: 'boolean', constraints: true } }),
+    ).toThrow();
+  });
 });
 
 describe('type check Options', () => {
@@ -962,87 +1002,85 @@ describe('combination error', () => {
     expect(() =>
       // @ts-expect-error booleanにはrequiredを指定できない
       parse({ aaa: { type: 'boolean', required: true } }),
-    ).toThrow('The --aaa cannot set to be required.');
+    ).toThrow();
   });
   test('boolean default', () => {
     expect(() =>
       // @ts-expect-error booleanにはdefaultを指定できない
       parse({ bbb: { type: 'boolean', default: 'true' } }),
-    ).toThrow(
-      'The default value of the --bbb parameter cannot be specified.: true',
-    );
+    ).toThrow();
   });
   test('alone required (string)', () => {
     expect(() =>
       // @ts-expect-error aloneとrequiredは同じオプションに指定できない
       parse({ ccc: { alone: true, required: true } }),
-    ).toThrow('The --ccc cannot be both alone and required.');
+    ).toThrow();
   });
   test('alone required number', () => {
     expect(() =>
       // @ts-expect-error aloneとrequiredは同じオプションに指定できない
       parse({ ddd: { type: 'number', alone: true, required: true } }),
-    ).toThrow('The --ddd cannot be both alone and required.');
+    ).toThrow();
   });
   test('alone default (string)', () => {
     expect(() =>
       // @ts-expect-error aloneとdefaultは同じオプションに指定できない
       parse({ eee: { alone: true, default: 'true' } }),
-    ).toThrow('The --eee cannot be set to both alone and default value.');
+    ).toThrow();
   });
   test('alone default number', () => {
     expect(() =>
       // @ts-expect-error aloneとdefaultは同じオプションに指定できない
       parse({ fff: { type: 'number', alone: true, default: 1 } }),
-    ).toThrow('The --fff cannot be set to both alone and default value.');
+    ).toThrow();
   });
   test('required default (string)', () => {
     expect(() =>
       // @ts-expect-error requiredとdefaultは同じオプションに指定できない
       parse({ ggg: { required: true, default: 'true' } }),
-    ).toThrow('The --ggg cannot be set to both required and default value.');
+    ).toThrow();
   });
   test('required default number', () => {
     expect(() =>
       // @ts-expect-error requiredとdefaultは同じオプションに指定できない
       parse({ hhh: { type: 'number', required: true, default: 1 } }),
-    ).toThrow('The --hhh cannot be set to both required and default value.');
+    ).toThrow();
   });
   test('alone multiple (string)', () => {
     expect(() =>
       // @ts-expect-error aloneとmultipleは同じオプションに指定できない
       parse({ iii: { alone: true, multiple: true } }),
-    ).toThrow('The --iii cannot be both alone and multiple.');
+    ).toThrow();
   });
   test('required multiple (string)', () => {
     expect(() =>
       // @ts-expect-error requiredとmultipleは同じオプションに指定できない
       parse({ jjj: { required: true, multiple: true } }),
-    ).toThrow('The --jjj cannot be both required and multiple.');
+    ).toThrow();
   });
   test('multiple default (string)', () => {
     expect(() =>
       // @ts-expect-error defaultとmultipleは同じオプションに指定できない
       parse({ kkk: { default: '', multiple: true } }),
-    ).toThrow('The --kkk cannot be set to both multiple and default value.');
+    ).toThrow();
   });
   test('alone multiple number', () => {
     expect(() =>
       // @ts-expect-error aloneとmultipleは同じオプションに指定できない
       parse({ lll: { type: 'number', alone: true, multiple: true } }),
-    ).toThrow('The --lll cannot be both alone and multiple.');
+    ).toThrow();
   });
   test('required multiple number', () => {
     expect(() =>
       // @ts-expect-error requiredとmultipleは同じオプションに指定できない
       parse({ mmm: { type: 'number', required: true, multiple: true } }),
-    ).toThrow('The --mmm cannot be both required and multiple.');
+    ).toThrow();
   });
   test('multiple default number', () => {
     expect(() =>
       // @ts-expect-error defaultとmultipleは同じオプションに指定できない
       parse({ nnn: { type: 'number', default: 1, multiple: true } }),
-    ).toThrow('The --nnn cannot be set to both multiple and default value.');
+    ).toThrow();
   });
 });
 
@@ -1335,17 +1373,32 @@ describe('invalid name', () => {
   });
   test('deprecated property: nature: alone', () => {
     expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { nature: 'alone' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: alone', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { type: 'string', nature: 'alone' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: alone', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
       parse({ abc: { type: 'boolean', nature: 'alone' } }, []),
-    ).toThrow(`The property 'nature' is deprecated. Please use 'alone': abc`);
+    ).toThrow();
   });
   test('deprecated property: nature: required', () => {
     expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
       parse({ abc: { type: 'number', nature: 'required' } }, []),
-    ).toThrow(`The property 'nature' is deprecated. Please use 'required': abc`);
+    ).toThrow();
   });
   test('deprecated property: nature: default', () => {
     expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
       parse({ abc: { type: 'number', nature: ['default', 1] } }, []),
-    ).toThrow(`The property 'nature' is deprecated. Please use 'default': abc`);
+    ).toThrow();
   });
 });

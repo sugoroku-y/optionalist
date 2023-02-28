@@ -341,6 +341,14 @@ type OptionBase<T extends string | number | boolean> = (T extends boolean
    * 制約。
    */
   constraints?: unknown;
+  /**
+   * 旧バージョンでalone、required、defaultを指定するためのプロパティ。
+   *
+   * 現行バージョンでは各プロパティで指定するため廃止。
+   *
+   * @deprecated
+   */
+  nature?: never;
 };
 
 /** 文字型/数値型オプションの共通情報 */
@@ -360,7 +368,7 @@ type StringOption = OptionWithValue<string> &
          *
          * 配列の場合は文字列として指定できる候補。ここで設定した以外の文字列を指定するとエラーとなる。
          */
-        constraints: readonly string[];
+        constraints: readonly [string, ...string[]];
         /**
          * constraintsに配列を指定したときに、大文字小文字を区別しない場合にはtrueを指定する。
          */
@@ -390,7 +398,7 @@ type NumberOption = OptionWithValue<number> &
          *
          * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
          */
-        constraints: readonly number[];
+        constraints: readonly [number, ...number[]];
       }
     | {
         /**
@@ -755,80 +763,104 @@ function assertValidOptMap<OptMap extends OptionInformationMap>(
     switch (type) {
       case undefined:
       case 'string':
-        // string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはずだが念の為
         assert(
           info.default === undefined || typeof info.default === 'string',
-          `The default value of the ${hyphenate(
-            name,
-          )} parameter must be a string.: ${info.default}`,
+          'string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはず',
         );
+        if (info.constraints !== undefined) {
+          if (info.constraints instanceof RegExp) {
+            // OK
+          } else if (Array.isArray(info.constraints)) {
+            assert(
+              info.constraints.length > 0,
+              'string型でconstraintsに空の配列を指定するとTypeScriptのエラーになるはず',
+            );
+            assert(
+              info.constraints.every(s => typeof s === 'string'),
+              'string型でconstraintsに文字列以外の配列を指定するとTypeScriptのエラーになるはず',
+            );
+          } else {
+            checkNever(
+              info.constraints,
+              'string型でconstraintsに正規表現もしくは文字列の配列以外を指定するとTypeScriptのエラーになるはず',
+            );
+          }
+        }
         break;
       case 'number':
-        // number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはずだが念の為
         assert(
           info.default === undefined || typeof info.default === 'number',
-          `The default value of the ${hyphenate(
-            name,
-          )} parameter must be a number.: ${info.default}`,
+          'number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはず',
         );
+        if (info.constraints !== undefined) {
+          if (Array.isArray(info.constraints)) {
+            assert(
+              info.constraints.length > 0,
+              'number型でconstraintsに空の配列を指定するとTypeScriptのエラーになるはず',
+            );
+            assert(
+              info.constraints.every(n => typeof n === 'number'),
+              'number型でconstraintsに数値以外の配列を指定するとTypeScriptのエラーになるはず',
+            );
+          } else if (typeof info.constraints === 'object') {
+            assert(
+              typeof info.constraints.max === 'number' ||
+                typeof info.constraints.maxExclusive === 'number' ||
+                typeof info.constraints.min === 'number' ||
+                typeof info.constraints.minExclusive === 'number',
+              'number型でconstraintsにmax/maxExclusive/min/minExclusiveのいずれかを指定していないとTypeScriptのエラーになるはず',
+            );
+            assert(
+              info.constraints.max === undefined ||
+                info.constraints.maxExclusive === undefined,
+              'number型でconstraintsにmax/maxExclusiveの両方を指定するとTypeScriptのエラーになるはず',
+            );
+            assert(
+              info.constraints.min === undefined ||
+                info.constraints.minExclusive === undefined,
+              'number型でconstraintsにmin/minExclusiveの両方を指定するとTypeScriptのエラーになるはず',
+            );
+          } else {
+            checkNever(
+              info,
+              'number型でconstraintsに数値の配列、もしくは数値の範囲以外を指定するとTypeScriptのエラーになるはず',
+            );
+          }
+        }
         break;
       case 'boolean':
-        // boolean型でrequiredを指定するとTypeScriptのエラーになるはずだが念の為
         assert(
           !info.required,
-          `The ${hyphenate(name)} cannot set to be required.`,
+          'boolean型でrequiredを指定するとTypeScriptのエラーになるはず',
         );
-        // boolean型でdefault値を指定するとTypeScriptのエラーになるはずだが念の為
         assert(
           info.default === undefined,
-          `The default value of the ${hyphenate(
-            name,
-          )} parameter cannot be specified.: ${String(info.default)}`,
+          'boolean型でdefault値を指定するとTypeScriptのエラーになるはず',
+        );
+        assert(
+          info.multiple === undefined,
+          'boolean型でmultipleを指定するとTypeScriptのエラーになるはず',
+        );
+        assert(
+          info.constraints === undefined,
+          'boolean型でconstraintsを指定するとTypeScriptのエラーになるはず',
         );
         break;
       default:
-        // 他のタイプを指定するとTypeScriptのエラーになるはずだが念の為
-        checkNever(
-          info,
-          `unknown type: ${String(type)} for the ${hyphenate(name)} parameter`,
-        );
+        checkNever(info, '他のタイプを指定するとTypeScriptのエラーになるはず');
     }
-    // defaultとaloneは一緒に指定するとTypeScriptのエラーになるはずだが念の為
     assert(
-      !info.alone || info.default === undefined,
-      `The ${hyphenate(name)} cannot be set to both alone and default value.`,
+      (info.alone ? 1 : 0) +
+        (info.default !== undefined ? 1 : 0) +
+        (info.required ? 1 : 0) +
+        (info.multiple ? 1 : 0) <=
+        1,
+      'default/alone/required/multipleは一緒に指定するとTypeScriptのエラーになるはず',
     );
-    // aloneとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
     assert(
-      !info.alone || !info.required,
-      `The ${hyphenate(name)} cannot be both alone and required.`,
+      !('nature' in info),
+      'natureは廃止したので指定するとTypeScriptのエラーになるはず',
     );
-    // aloneとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-    assert(
-      !info.alone || !info.multiple,
-      `The ${hyphenate(name)} cannot be both alone and multiple.`,
-    );
-    // defaultとrequiredは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-    assert(
-      !info.required || info.default === undefined,
-      `The ${hyphenate(
-        name,
-      )} cannot be set to both required and default value.`,
-    );
-    // requiredとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-    assert(
-      !info.required || !info.multiple,
-      `The ${hyphenate(name)} cannot be both required and multiple.`,
-    );
-    // defaultとmultipleは一緒に指定するとTypeScriptのエラーになるはずだが念の為
-    assert(
-      !info.multiple || info.default === undefined,
-      `The ${hyphenate(
-        name,
-      )} cannot be set to both multiple and default value.`,
-    );
-    // natureは廃止
-    assert(!('nature' in info), `The property 'nature' is deprecated. Please use '${typeof (info as {nature: unknown}).nature === 'string' ? (info as {nature: unknown}).nature : 'default'}': ${name}`);
   }
 }
 
@@ -895,13 +927,13 @@ function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
     // キャメルケースにすることで別のオプションと同名になる場合はエラー
     assert(
       existName === undefined,
-      `Duplicate option name: ${name}, ${existName ?? ''}`,
+      () => `Duplicate option name: ${name}, ${existName}`,
     );
     const hyphenateName = hyphenate(name);
     // 他のオプションでAliasが設定されている名前であればエラー
     assert(
       !(hyphenateName in map),
-      `Duplicate alias name: ${name}, ${map[hyphenateName]?.entryName}`,
+      () => `Duplicate alias name: ${name}, ${map[hyphenateName].entryName}`,
     );
     const value = { name: camelCaseName, entryName: name, info };
     map[hyphenateName] = value;
@@ -913,7 +945,7 @@ function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
       // 他のオプションやAliasが設定されている名前であればエラー
       assert(
         !(hyphenateAlias in map),
-        `Duplicate alias name: ${name}, ${map[hyphenateAlias]?.entryName}`,
+        () => `Duplicate alias name: ${name}, ${map[hyphenateAlias].entryName}`,
       );
       map[hyphenateAlias] = value;
     }
@@ -953,7 +985,7 @@ function parseOption(
     return true;
   }
   const { name, info } = optMapAlias[arg];
-  assert(typeof info === 'object');
+  assert(typeof info === 'object', 'infoはobjectのはず');
   if (aloneOpt || (prevOpt && info.alone)) {
     // 単独で指定されるはずなのに他のオプションが指定された
     return usage`${aloneOpt || arg} must be specified alone.`;
@@ -1083,7 +1115,7 @@ function validateOptions(
     if (name in options) {
       continue;
     }
-    assert(typeof info === 'object');
+    assert(typeof info === 'object', 'infoはobjectのはず');
     // requiredなのに指定されていなかったらエラー
     if (info.required) {
       return usage`${optArg} required`;
@@ -1224,7 +1256,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const aloneList: string[] = [];
   for (const [name, _info] of Object.entries(optMap)) {
     const info = normalizeOptInfo(_info);
-    assert(typeof info === 'object', `${name} is not object`);
+    assert(typeof info === 'object', 'infoはobjectのはず');
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
     );
@@ -1265,7 +1297,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   for (const [name, _info] of Object.entries(optMap)) {
     const info = normalizeOptInfo(_info);
     const optNames = [name];
-    assert(typeof info === 'object');
+    assert(typeof info === 'object', 'infoはobjectのはず');
     if (info.alias) {
       if (typeof info.alias === 'string') {
         optNames.push(info.alias);
@@ -1349,8 +1381,8 @@ export function parse<OptMap extends OptionInformationMap>(
   return Object.freeze(context.options) as Options<OptMap>;
 }
 
-function assert(o: unknown, message?: string): asserts o {
+function assert(o: unknown, message?: string | (() => string)): asserts o {
   if (!o) {
-    throw new TypeError(message);
+    throw new TypeError(typeof message === 'function' ? message() : message);
   }
 }
