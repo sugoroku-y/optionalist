@@ -21,6 +21,9 @@
         "node": true
     },
     "rules": {
+        // テンプレートリテラルでundefinedやunknownを使えるように
+        "@typescript-eslint/restrict-template-expressions": "off",
+        // _で始まる変数は対象外
         "@typescript-eslint/no-unused-vars": ["error", { "varsIgnorePattern": "^_" }]
     }
 }
