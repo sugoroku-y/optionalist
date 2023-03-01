@@ -538,15 +538,24 @@ test('duplicate number', () => {
   ).toThrow('Duplicate -a: 10, 20');
 });
 
+test('duplicate flag', () => {
+  expect(() => parse({ a: { type: 'boolean' } }, ['-a', '-a'])).toThrow(
+    'Duplicate -a',
+  );
+});
+
 test('invalid optMap', () => {
   expect(() => parse({ '': {} })).toThrow('empty option name');
   expect(() => parse({ '-': {} })).toThrow('Invalid option name: -');
 });
 
 test('pattern constraints', () => {
+  expect(parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb=']).a).toBe(
+    'aaabbb=',
+  );
   expect(
     () => parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']).a,
-  ).toThrow('-a does not match /^\\w+=/: aaabbb');
+  ).toThrow('-a does not match /^\\w+=/.: aaabbb');
 });
 
 test('minExclusive', () => {

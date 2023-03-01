@@ -291,7 +291,7 @@ export const unnamed: unique symbol = Symbol('unnamed');
 type OptionBase<T extends string | number | boolean> = (T extends boolean
   ? { readonly type: 'boolean' }
   : T extends number
-  ? { type: 'number' }
+  ? { readonly type: 'number' }
   : { readonly type?: 'string' }) & {
   /**
    * オプションの型。
@@ -440,14 +440,35 @@ type FlagOption = OptionBase<boolean> & {
   alone?: true;
 } & Partial<Record<'constraints' | 'required' | 'multiple' | 'default', never>>; // booleanにはこれらを指定できない。
 
-/**
- * 各プロパティの詳細情報
- */
-type OptionInformation =
-  | Normalize<NumberOption | FlagOption | StringOption>
-  | string
-  | number
-  | true;
+interface UnnamedOptionInfo {
+  /**
+   * コマンドラインオプションの説明で使用する無名オプションの名前。
+   */
+  example?: string;
+  /**
+   * 無名オプションの説明。
+   */
+  describe?: string;
+  /**
+   * 無名オプションの最小個数。
+   */
+  min?: number;
+  /**
+   * 無名オプションの最大個数。
+   */
+  max?: number;
+}
+
+interface HelpStringOptionInfo {
+  /**
+   * このコマンドの説明。
+   */
+  describe?: string;
+  /**
+   * コマンドラインに不備があったときに使用方法を表示して終了するときにはtrueを指定する。
+   */
+  showUsageOnError?: true;
+}
 
 /**
  * parseの第一引数の型。
@@ -456,83 +477,69 @@ type OptionInformationMap = Readonly<{
   /**
    * 無名オプションの説明などを指定する。
    */
-  [unnamed]?: Readonly<{
-    /**
-     * コマンドラインオプションの説明で使用する無名オプションの名前。
-     */
-    example?: string;
-    /**
-     * 無名オプションの説明。
-     */
-    describe?: string;
-    /**
-     * 無名オプションの最小個数。
-     */
-    min?: number;
-    /**
-     * 無名オプションの最大個数。
-     */
-    max?: number;
-  }>;
+  [unnamed]?: Readonly<UnnamedOptionInfo>;
   /**
    * このコマンドの説明などを指定する。
    */
-  [helpString]?: Readonly<{
-    /**
-     * このコマンドの説明。
-     */
-    describe?: string;
-    /**
-     * コマンドラインに不備があったときに使用方法を表示して終了するときにはtrueを指定する。
-     */
-    showUsageOnError?: true;
-  }>;
+  [helpString]?: Readonly<HelpStringOptionInfo>;
   /**
    * 名前付きオプションの詳細
    */
-  [name: string]: Readonly<OptionInformation>;
+  [name: string]: Readonly<
+    NumberOption | FlagOption | StringOption | string | number | true
+  >;
 }>;
+
+type NormalizedOptionInformationMap = {
+  [unnamed]?: UnnamedOptionInfo;
+  [helpString]?: HelpStringOptionInfo;
+  [name: string]:
+    | (StringOption & { type: 'string' })
+    | NumberOption
+    | FlagOption;
+};
+
+type OptionTypeName<
+  OptionInfo extends Record<string, unknown> | string | number | true,
+> = OptionInfo extends true
+  ? 'boolean'
+  : OptionInfo extends number
+  ? 'number'
+  : OptionInfo extends string
+  ? 'string'
+  : OptionInfo extends { type: 'boolean' }
+  ? 'boolean'
+  : OptionInfo extends { type: 'number' }
+  ? 'number'
+  : OptionInfo extends { type: 'string' }
+  ? 'string'
+  : OptionInfo extends { type: unknown }
+  ? never
+  : 'string';
 
 /**
  * parseの返値の各プロパティの型
  */
-type OptionType<OptionInfo extends OptionInformation> =
+type OptionType<
+  OptionInfo extends Record<string, unknown> | string | number | true,
+> =
   // typeの値で振り分け
-  OptionInfo extends { type: 'boolean' }
+  OptionTypeName<OptionInfo> extends 'boolean'
     ? // typeがbooleanなら真偽値
       true // だが、falseにすることはできないのでtrueになる。
-    : OptionInfo extends { type: 'number' }
+    : OptionTypeName<OptionInfo> extends 'number'
     ? // typeがnumberなら数値型
       OptionInfo extends { constraints: readonly number[] }
       ? // constraintsが指定されていれば数値の列挙型
         OptionInfo['constraints'][number]
       : number
-    : OptionInfo extends { type: 'string' }
-    ? // typeがstringなら文字列型
+    : OptionTypeName<OptionInfo> extends 'string'
+    ? // typeがstringもしくは省略されていれば文字列型
       OptionInfo extends { constraints: readonly string[] }
       ? // constraintsが指定されていれば文字列の列挙型
         OptionInfo['constraints'][number]
       : string
-    : OptionInfo extends { type: unknown }
-    ? // typeにその他の値が指定されていることはない
-      never
-    : // type省略時にも文字列型
-    OptionInfo extends { constraints: readonly string[] }
-    ? // constraintsが指定されていれば文字列の列挙型
-      OptionInfo['constraints'][number]
-    : // objectが指定されていれば文字列型
-    OptionInfo extends Record<string | number | symbol, unknown>
-    ? string
-    : // 文字列が指定されていれば文字列型
-    OptionInfo extends string
-    ? string
-    : // 数値が指定されていれば数値型
-    OptionInfo extends number
-    ? number
-    : // trueが指定されていれば真偽値
-    OptionInfo extends true
-    ? true
-    : // それ以外は指定されることはないはずだが念の為never
+    : // typeにその他の値が指定されていることはない
       never;
 
 /**
@@ -621,7 +628,7 @@ type Options<OPTMAP extends OptionInformationMap> =
   | OptionsAlone<OPTMAP>;
 
 /**
- * never型になっているかどうかチェックする。
+ * 指定した第1引数がnever型になっているかどうかチェックする。
  *
  * never型であれば本来この関数は呼び出されないはずだが、
  * TypeScript以外から使用されたときには
@@ -632,20 +639,8 @@ type Options<OPTMAP extends OptionInformationMap> =
  * @param {string} [message]
  * @returns {never}
  */
-function checkNever(obj: never, message: string): never {
+function assertNever(_: never, message: string): never {
   throw new Error(message);
-}
-
-/**
- * Iteratorをfor-ofやスプリット構文で使用できるように変換する。
- * @param itr
- */
-function toIterable<T>(itr: Iterator<T>): Iterable<T> {
-  return {
-    [Symbol.iterator]() {
-      return itr;
-    },
-  };
 }
 
 /**
@@ -723,25 +718,128 @@ function camelCase<KEBABCASE extends string>(
 }
 
 /**
- * infoに指定されていた値に応じて変換する。
+ * optMapの内容を値に応じて正規化する。
  * - 文字列が指定されていた場合はStringOptionに変換する。
  * - 数値が指定されていた場合はNumberOptionに変換する。
  * - trueが指定されていた場合はFlagOptionに変換する。
- * - 上記以外はそのまま。
+ * - StringOptionのtypeが省略されていれば`string`を設定する。
+ * 上記以外はそのまま。
  *
- * @param {OptionInformation} info 文字列や数値なども含むOptionInformation
- * @returns {NumberOption | FlagOption | StringOption} object型のOptionInformation
+ * @param {OptionInformationMap} optMap 文字列や数値なども含むOptionInformationを値に持つマップ
+ * @returns {NormalizedOptionInformationMap} 正規化したマップ
  */
-function normalizeOptInfo(
-  info: OptionInformation,
-): NumberOption | FlagOption | StringOption {
-  return typeof info === 'string'
-    ? { type: 'string', default: info }
-    : typeof info === 'number'
-    ? { type: 'number', default: info }
-    : info === true
-    ? { type: 'boolean' }
-    : info;
+function normalizeOptMap(
+  optMap: OptionInformationMap,
+): NormalizedOptionInformationMap {
+  const normalizedOptMap: NormalizedOptionInformationMap = {};
+  for (const [name, info] of Object.entries(optMap)) {
+    normalizedOptMap[name] =
+      typeof info === 'string'
+        ? { type: 'string', default: info }
+        : typeof info === 'number'
+        ? { type: 'number', default: info }
+        : info === true
+        ? { type: 'boolean' }
+        : info.type === undefined || info.type === 'string'
+        ? ({ ...info, type: 'string' } as StringOption & { type: 'string' })
+        : info.type === 'number' || info.type === 'boolean'
+        ? info
+        : assertNever(
+            info.type,
+            'info.typeはstring/number/booleanのいずれか、もしくは省略されているはず',
+          );
+  }
+  if (unnamed in optMap) {
+    normalizedOptMap[unnamed] = optMap[unnamed];
+  }
+  if (helpString in optMap) {
+    normalizedOptMap[helpString] = optMap[helpString];
+  }
+  return normalizedOptMap;
+}
+
+function assertStringOption(info: StringOption) {
+  assert(
+    info.default === undefined || typeof info.default === 'string',
+    'string型ではdefault値に文字列以外を指定できない',
+  );
+  if (info.constraints === undefined) {
+    return;
+  }
+  if (info.constraints instanceof RegExp) {
+    // 正規表現の場合は無条件にOKとする(チェックしようがない)
+    return;
+  }
+  if (Array.isArray(info.constraints)) {
+    assert(
+      info.constraints.length > 0,
+      'string型ではconstraintsに空の配列を指定できない',
+    );
+    assert(
+      info.constraints.every(s => typeof s === 'string'),
+      'string型ではconstraintsに文字列以外の配列を指定できない',
+    );
+    return;
+  }
+  assertNever(
+    info.constraints,
+    'string型ではconstraintsに正規表現もしくは文字列の配列以外を指定できない',
+  );
+}
+
+function assertNumberOption(info: NumberOption) {
+  assert(
+    info.default === undefined || typeof info.default === 'number',
+    'number型ではdefault値に数値以外を指定できない',
+  );
+  if (info.constraints === undefined) {
+    return;
+  }
+  if (Array.isArray(info.constraints)) {
+    assert(
+      info.constraints.length > 0,
+      'number型ではconstraintsに空の配列を指定できない',
+    );
+    assert(
+      info.constraints.every(n => typeof n === 'number'),
+      'number型ではconstraintsに数値以外の配列を指定できない',
+    );
+    return;
+  }
+  if (typeof info.constraints === 'object') {
+    assert(
+      typeof info.constraints.max === 'number' ||
+        typeof info.constraints.maxExclusive === 'number' ||
+        typeof info.constraints.min === 'number' ||
+        typeof info.constraints.minExclusive === 'number',
+      'number型ではconstraintsにmax/maxExclusive/min/minExclusiveのいずれも存在しないオブジェクトを指定できない',
+    );
+    assert(
+      info.constraints.max === undefined ||
+        info.constraints.maxExclusive === undefined,
+      'number型ではconstraintsにmax/maxExclusiveの両方が存在するオブジェクトを指定できない',
+    );
+    assert(
+      info.constraints.min === undefined ||
+        info.constraints.minExclusive === undefined,
+      'number型ではconstraintsにmin/minExclusiveの両方が存在するオブジェクトを指定できない',
+    );
+    return;
+  }
+  assertNever(
+    info,
+    'number型ではconstraintsに数値の配列、もしくは数値の範囲以外を指定できない',
+  );
+}
+
+function assertFlagOption(info: FlagOption) {
+  assert(
+    info.required === undefined &&
+      info.default === undefined &&
+      info.multiple === undefined &&
+      info.constraints === undefined,
+    'boolean型ではrequired/default値/multiple/constraintsを指定できない',
+  );
 }
 
 /**
@@ -753,114 +851,29 @@ function normalizeOptInfo(
  * @param optMap 解析するための情報。
  * @throws optMapに問題がある場合はTypeErrorを投げる。
  */
-function assertValidOptMap<OptMap extends OptionInformationMap>(
-  optMap: OptMap,
-): void {
-  for (const [name, _info] of Object.entries(optMap)) {
-    const info = normalizeOptInfo(_info);
-    const { type } = info;
+function assertValidOptMap(optMap: NormalizedOptionInformationMap): void {
+  for (const info of Object.values(optMap)) {
     // 型指定のチェック
-    switch (type) {
-      case undefined:
+    switch (info.type) {
       case 'string':
-        assert(
-          info.default === undefined || typeof info.default === 'string',
-          'string型でdefault値に文字列以外を指定するとTypeScriptのエラーになるはず',
-        );
-        if (info.constraints !== undefined) {
-          if (info.constraints instanceof RegExp) {
-            // OK
-          } else if (Array.isArray(info.constraints)) {
-            assert(
-              info.constraints.length > 0,
-              'string型でconstraintsに空の配列を指定するとTypeScriptのエラーになるはず',
-            );
-            assert(
-              info.constraints.every(s => typeof s === 'string'),
-              'string型でconstraintsに文字列以外の配列を指定するとTypeScriptのエラーになるはず',
-            );
-          } else {
-            checkNever(
-              info.constraints,
-              'string型でconstraintsに正規表現もしくは文字列の配列以外を指定するとTypeScriptのエラーになるはず',
-            );
-          }
-        }
+        assertStringOption(info);
         break;
       case 'number':
-        assert(
-          info.default === undefined || typeof info.default === 'number',
-          'number型でdefault値に数値以外を指定するとTypeScriptのエラーになるはず',
-        );
-        if (info.constraints !== undefined) {
-          if (Array.isArray(info.constraints)) {
-            assert(
-              info.constraints.length > 0,
-              'number型でconstraintsに空の配列を指定するとTypeScriptのエラーになるはず',
-            );
-            assert(
-              info.constraints.every(n => typeof n === 'number'),
-              'number型でconstraintsに数値以外の配列を指定するとTypeScriptのエラーになるはず',
-            );
-          } else if (typeof info.constraints === 'object') {
-            assert(
-              typeof info.constraints.max === 'number' ||
-                typeof info.constraints.maxExclusive === 'number' ||
-                typeof info.constraints.min === 'number' ||
-                typeof info.constraints.minExclusive === 'number',
-              'number型でconstraintsにmax/maxExclusive/min/minExclusiveのいずれかを指定していないとTypeScriptのエラーになるはず',
-            );
-            assert(
-              info.constraints.max === undefined ||
-                info.constraints.maxExclusive === undefined,
-              'number型でconstraintsにmax/maxExclusiveの両方を指定するとTypeScriptのエラーになるはず',
-            );
-            assert(
-              info.constraints.min === undefined ||
-                info.constraints.minExclusive === undefined,
-              'number型でconstraintsにmin/minExclusiveの両方を指定するとTypeScriptのエラーになるはず',
-            );
-          } else {
-            checkNever(
-              info,
-              'number型でconstraintsに数値の配列、もしくは数値の範囲以外を指定するとTypeScriptのエラーになるはず',
-            );
-          }
-        }
+        assertNumberOption(info);
         break;
       case 'boolean':
-        assert(
-          !info.required,
-          'boolean型でrequiredを指定するとTypeScriptのエラーになるはず',
-        );
-        assert(
-          info.default === undefined,
-          'boolean型でdefault値を指定するとTypeScriptのエラーになるはず',
-        );
-        assert(
-          info.multiple === undefined,
-          'boolean型でmultipleを指定するとTypeScriptのエラーになるはず',
-        );
-        assert(
-          info.constraints === undefined,
-          'boolean型でconstraintsを指定するとTypeScriptのエラーになるはず',
-        );
+        assertFlagOption(info);
         break;
-      default:
-        checkNever(info, '他のタイプを指定するとTypeScriptのエラーになるはず');
     }
     assert(
-      (info.alone ? 1 : 0) +
-        (info.default !== undefined ? 1 : 0) +
+      (info.default !== undefined ? 1 : 0) +
+        (info.alone ? 1 : 0) +
         (info.required ? 1 : 0) +
         (info.multiple ? 1 : 0) <=
         1,
-      'default/alone/required/multipleは一緒に指定するとTypeScriptのエラーになるはず',
+      'default/alone/required/multipleは同時に指定できない',
     );
-    assert(
-      !('nature' in info),
-      'natureは廃止したので指定するとTypeScriptのエラーになるはず',
-    );
+    assert(!('nature' in info), 'natureは廃止されたので指定できない');
   }
 }
 
@@ -876,7 +889,7 @@ type ParseContext = {
     string,
     {
       readonly name: string;
-      readonly info: Readonly<NumberOption | FlagOption | StringOption>;
+      readonly info: Readonly<NormalizedOptionInformationMap[string]>;
     }
   >;
   /** 無名オプション */
@@ -887,8 +900,8 @@ type ParseContext = {
   prevOpt?: string;
 };
 
-function initParseContext<OptMap extends OptionInformationMap>(
-  optMap: OptMap,
+function initParseContext(
+  optMap: NormalizedOptionInformationMap,
 ): ParseContext {
   return {
     /** 名前付きオプション(ヘルプ用文字列付き) */
@@ -897,7 +910,7 @@ function initParseContext<OptMap extends OptionInformationMap>(
       get: () => makeHelpString(optMap),
     }) as ParseContext['options'],
     // エイリアスを含めたオプションの詳細マップ
-    optMapAlias: expandAlias<OptMap>(optMap),
+    optMapAlias: expandAlias(optMap),
     /** 無名オプション */
     unnamedList: [],
   };
@@ -910,17 +923,16 @@ function initParseContext<OptMap extends OptionInformationMap>(
  * @param {OptMap} optMap
  * @returns
  */
-function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
+function expandAlias(optMap: NormalizedOptionInformationMap) {
   const map: Record<
     string,
     {
       name: string;
       entryName: string;
-      info: NumberOption | FlagOption | StringOption;
+      info: NormalizedOptionInformationMap[string];
     }
   > = {};
-  for (const [name, _info] of Object.entries(optMap)) {
-    const info = normalizeOptInfo(_info);
+  for (const [name, info] of Object.entries(optMap)) {
     const camelCaseName = camelCase(name);
     const { entryName: existName } =
       Object.values(map).find(({ name }) => name === camelCaseName) ?? {};
@@ -953,6 +965,122 @@ function expandAlias<OptMap extends OptionInformationMap>(optMap: OptMap) {
   return map;
 }
 
+function parseStringOption(
+  arg: string,
+  name: string,
+  info: StringOption,
+  itr: Iterator<string, unknown, undefined>,
+  options: ParseContext['options'],
+): boolean {
+  const r = itr.next();
+  if (r.done) {
+    return usage`${arg} needs a parameter as the ${example(info)}`;
+  }
+  const value = (value => {
+    if (!info.constraints) {
+      return value;
+    }
+    // 制約の指定があれば条件を確認
+    if (info.constraints instanceof RegExp) {
+      // 正規表現にマッチするかどうか
+      return info.constraints.test(value)
+        ? value
+        : usage`${arg} does not match ${info.constraints}.: ${value}`;
+    }
+    const findText = info.ignoreCase ? value.toUpperCase() : value;
+    // 指定された候補と一致したらその候補を返す
+    return (
+      info.constraints.find(
+        s => (info.ignoreCase ? s.toUpperCase() : s) === findText,
+      ) ??
+      usage`${arg} must be one of ${info.constraints.join(', ')}.: ${value}`
+    );
+  })(r.value);
+  if (info.multiple) {
+    // 複数指定可能な場合は配列に格納
+    ((options[name] ??= []) as string[]).push(value);
+  } else {
+    if (name in options) {
+      // 既に設定済みならエラー
+      return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
+    }
+    options[name] = value;
+  }
+  return true;
+}
+
+function parseNumberOption(
+  arg: string,
+  name: string,
+  info: NumberOption,
+  itr: Iterator<string, unknown, undefined>,
+  options: ParseContext['options'],
+): boolean {
+  const r = itr.next();
+  if (r.done) {
+    return usage`${arg} needs a number parameter as the ${example(info)}`;
+  }
+  const value = +r.value;
+  if (!isFinite(value)) {
+    return usage`${arg} needs a number parameter as the ${example(info)}: ${
+      r.value
+    }`;
+  }
+  if (info.constraints) {
+    // 制約の指定があれば条件を確認
+    if (Array.isArray(info.constraints)) {
+      if (!info.constraints.includes(value)) {
+        return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+      }
+    } else {
+      if (info.constraints.min !== undefined && value < info.constraints.min) {
+        return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
+      }
+      if (
+        info.constraints.minExclusive !== undefined &&
+        value <= info.constraints.minExclusive
+      ) {
+        return usage`${arg} must be greater than ${info.constraints.minExclusive}.`;
+      }
+      if (info.constraints.max !== undefined && value > info.constraints.max) {
+        return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
+      }
+      if (
+        info.constraints.maxExclusive !== undefined &&
+        value >= info.constraints.maxExclusive
+      ) {
+        return usage`${arg} must be less than ${info.constraints.maxExclusive}.`;
+      }
+    }
+  }
+  if (info.multiple) {
+    // 複数指定可能な場合は配列に格納
+    ((options[name] ??= []) as number[]).push(value);
+  } else {
+    if (name in options) {
+      // 既に設定済みならエラー
+      return usage`Duplicate ${arg}: ${options[name]}, ${value}`;
+    }
+    options[name] = value;
+  }
+  return true;
+}
+
+function parseFlagOption(
+  arg: string,
+  name: string,
+  _info: FlagOption,
+  _itr: Iterator<string, unknown, undefined>,
+  options: ParseContext['options'],
+): boolean {
+  if (name in options) {
+    // 既に設定済みならエラー
+    return usage`Duplicate ${arg}`;
+  }
+  options[name] = true;
+  return true;
+}
+
 /**
  * オプションを1つ解析する。
  *
@@ -973,7 +1101,9 @@ function parseOption(
       return usage`${aloneOpt} must be specified alone.`;
     }
     // --以降はすべて無名オプション
-    unnamedList.push(...toIterable(itr));
+    for (let r; !(r = itr.next()).done; ) {
+      unnamedList.push(r.value);
+    }
     return false;
   }
   if (!optMapAlias[arg]) {
@@ -995,100 +1125,12 @@ function parseOption(
     context.aloneOpt = arg;
   }
   switch (info.type) {
+    case 'string':
+      return parseStringOption(arg, name, info, itr, options);
+    case 'number':
+      return parseNumberOption(arg, name, info, itr, options);
     case 'boolean':
-      options[name] = true;
-      return true;
-    case 'number': {
-      const r = itr.next();
-      if (r.done) {
-        return usage`${arg} needs a number parameter as the ${example(info)}`;
-      }
-      const value = +r.value;
-      if (!isFinite(value)) {
-        return usage`${arg} needs a number parameter as the ${example(info)}: ${
-          r.value
-        }`;
-      }
-      if (info.constraints) {
-        if (Array.isArray(info.constraints)) {
-          if (!info.constraints.includes(value)) {
-            return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
-          }
-        } else {
-          if (
-            info.constraints.min !== undefined &&
-            value < info.constraints.min
-          ) {
-            return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
-          }
-          if (
-            info.constraints.minExclusive !== undefined &&
-            value <= info.constraints.minExclusive
-          ) {
-            return usage`${arg} must be greater than ${info.constraints.minExclusive}.`;
-          }
-          if (
-            info.constraints.max !== undefined &&
-            value > info.constraints.max
-          ) {
-            return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
-          }
-          if (
-            info.constraints.maxExclusive !== undefined &&
-            value >= info.constraints.maxExclusive
-          ) {
-            return usage`${arg} must be less than ${info.constraints.maxExclusive}.`;
-          }
-        }
-      }
-      if (info.multiple) {
-        ((options[name] ??= []) as number[]).push(value);
-      } else {
-        if (name in options) {
-          return usage`Duplicate ${arg}: ${options[name]}, ${value}`;
-        }
-        options[name] = value;
-      }
-      return true;
-    }
-    case undefined:
-    case 'string': {
-      const r = itr.next();
-      if (r.done) {
-        return usage`${arg} needs a parameter as the ${example(info)}`;
-      }
-      let value = r.value;
-      if (info.constraints) {
-        if (info.constraints instanceof RegExp) {
-          if (!info.constraints.test(value)) {
-            return usage`${arg} does not match ${info.constraints}: ${r.value}`;
-          }
-        } else {
-          const [constraints, findValue] = info.ignoreCase
-            ? [
-                info.constraints.map(s => s.toUpperCase()),
-                r.value.toUpperCase(),
-              ]
-            : [info.constraints, r.value];
-          const index = constraints.indexOf(findValue);
-          if (index < 0) {
-            return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
-          }
-          if (info.ignoreCase) {
-            value = info.constraints[index];
-          }
-        }
-      }
-      if (info.multiple) {
-        ((options[name] ??= []) as string[]).push(value);
-      } else {
-        if (name in options) {
-          return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
-        }
-        options[name] = value;
-      }
-      return true;
-    }
+      return parseFlagOption(arg, name, info, itr, options);
   }
 }
 
@@ -1241,9 +1283,7 @@ function indent(text: string | undefined, indent: string): string[] {
  * @param {OptMap} optMap コマンドラインオプションの詳細情報。
  * @returns {string} コマンドラインオプションのヘルプ用文字列。
  */
-function makeHelpString<OptMap extends OptionInformationMap>(
-  optMap: OptMap,
-): string {
+function makeHelpString(optMap: NormalizedOptionInformationMap): string {
   const { version, name: processName } = loadPackageJson();
   const help: string[] = [];
   /* istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外 */
@@ -1254,8 +1294,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
   const requiredList: string[] = [];
   const optionalList: string[] = [];
   const aloneList: string[] = [];
-  for (const [name, _info] of Object.entries(optMap)) {
-    const info = normalizeOptInfo(_info);
+  for (const [name, info] of Object.entries(optMap)) {
     assert(typeof info === 'object', 'infoはobjectのはず');
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
@@ -1294,8 +1333,7 @@ function makeHelpString<OptMap extends OptionInformationMap>(
     '',
     'Options:',
   );
-  for (const [name, _info] of Object.entries(optMap)) {
-    const info = normalizeOptInfo(_info);
+  for (const [name, info] of Object.entries(optMap)) {
     const optNames = [name];
     assert(typeof info === 'object', 'infoはobjectのはず');
     if (info.alias) {
@@ -1323,23 +1361,6 @@ function makeHelpString<OptMap extends OptionInformationMap>(
 }
 
 /**
- * CommandLineParsingErrorを受け取った場合はヘルプを表示して終了
- *
- * @param {unknown} ex
- * @param {{ readonly [helpString]: string }} options
- */
-function showUsageOnCommandLineParsingError(
-  ex: unknown,
-  options: { readonly [helpString]: string },
-) {
-  if (ex instanceof CommandLineParsingError) {
-    // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-    process.stderr.write(`${ex.message}\n\n${options[helpString]}`);
-    process.exit(1);
-  }
-}
-
-/**
  * コマンドラインをoptMapにしたがって解析する。
  *
  * @param optMap 解析するための情報。
@@ -1348,12 +1369,16 @@ function showUsageOnCommandLineParsingError(
  * @throws argsに問題がある場合には{@link CommandLineParsingError}を投げる。
  */
 export function parse<OptMap extends OptionInformationMap>(
-  optMap: OptMap,
+  _optMap: OptMap,
   args?: Iterable<string>,
 ): Options<OptMap> {
+  // 省略記法などを正規化する
+  const optMap = normalizeOptMap(_optMap);
   // optMapの内容チェック
   assertValidOptMap(optMap);
-  const context: ParseContext = initParseContext<OptMap>(optMap);
+  // 解析用コンテキストの準備
+  const context: ParseContext = initParseContext(optMap);
+  // 解析対象のパラメーター取得
   const itr =
     args?.[Symbol.iterator]() ??
     (() => {
@@ -1365,15 +1390,16 @@ export function parse<OptMap extends OptionInformationMap>(
       return itr;
     })();
   try {
-    for (const arg of toIterable(itr)) {
-      if (!parseOption(arg, itr, context)) {
-        break;
-      }
-    }
+    for (let r; !(r = itr.next()).done && parseOption(r.value, itr, context); );
     validateOptions(context, optMap[unnamed]);
   } catch (ex: unknown) {
-    if (optMap[helpString]?.showUsageOnError) {
-      showUsageOnCommandLineParsingError(ex, context.options);
+    if (
+      optMap[helpString]?.showUsageOnError &&
+      ex instanceof CommandLineParsingError
+    ) {
+      // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
+      process.stderr.write(`${ex.message}\n\n${context.options[helpString]}`);
+      process.exit(1);
     }
     throw ex;
   }

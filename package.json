@@ -5,6 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "lint": "eslint ./",
+    "prebuild": "npm run lint",
     "build": "tsc --build src/tsconfig.json",
     "pretest": "npm run build",
     "test": "jest",
