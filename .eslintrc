@@ -23,7 +23,14 @@
     "rules": {
         // テンプレートリテラルでundefinedやunknownを使えるように
         "@typescript-eslint/restrict-template-expressions": "off",
-        // _で始まる変数は対象外
-        "@typescript-eslint/no-unused-vars": ["error", { "varsIgnorePattern": "^_" }]
+        // _で始まる変数/引数等は対象外
+        "@typescript-eslint/no-unused-vars": [
+            "error", {
+                "argsIgnorePattern": "^_",
+                "varsIgnorePattern": "^_",
+                "caughtErrorsIgnorePattern": "^_",
+                "destructuredArrayIgnorePattern": "^_"
+            }
+        ]
     }
 }
