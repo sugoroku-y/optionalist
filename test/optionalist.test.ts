@@ -60,58 +60,77 @@ const OPTMAP = {
 } as const;
 
 test('optionalist normal', () => {
-  expect(parse(OPTMAP, ['--delta', 'test'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'test']);
+  expect(options).toEqual({
     delta: 'test',
     bravo: 1,
     foxtrot: 'racoondog',
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist normal', () => {
-  expect(parse(OPTMAP, ['--alpha', 'bet', '--delta', 'test'])).toEqual({
+  const options = parse(OPTMAP, ['--alpha', 'bet', '--delta', 'test']);
+  expect(options).toEqual({
     alpha: 'bet',
     delta: 'test',
     foxtrot: 'racoondog',
     bravo: 1,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist normal', () => {
-  expect(
-    parse(OPTMAP, ['--alpha', 'bet', '--bravo', '2', '--delta', 'test']),
-  ).toEqual({
+  const options = parse(OPTMAP, [
+    '--alpha',
+    'bet',
+    '--bravo',
+    '2',
+    '--delta',
+    'test',
+  ]);
+  expect(options).toEqual({
     alpha: 'bet',
     delta: 'test',
     foxtrot: 'racoondog',
     bravo: 2,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist alone', () => {
-  expect(parse(OPTMAP, ['--charlie'])).toEqual({ charlie: true });
+  const options = parse(OPTMAP, ['--charlie']);
+  expect(options).toEqual({ charlie: true });
+  expect(options[unnamed]).toBeUndefined();
 });
 test('optionalist alone', () => {
-  expect(parse(OPTMAP, ['--echo', 'string'])).toEqual({
+  const options = parse(OPTMAP, ['--echo', 'string']);
+  expect(options).toEqual({
     echo: 'string',
   });
+  expect(options[unnamed]).toBeUndefined();
 });
 test('optionalist unnamed', () => {
-  expect(parse(OPTMAP, ['--delta', 'test', 'aaa', 'bbb', 'ccc'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'test', 'aaa', 'bbb', 'ccc']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'test',
     foxtrot: 'racoondog',
-    [unnamed]: ['aaa', 'bbb', 'ccc'],
   });
+  expect(options[unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
 });
 test('optionalist unnamed', () => {
-  expect(
-    parse(OPTMAP, ['--delta', 'test', '--', '--aaa', '-bbb', '-ccc']),
-  ).toEqual({
+  const options = parse(OPTMAP, [
+    '--delta',
+    'test',
+    '--',
+    '--aaa',
+    '-bbb',
+    '-ccc',
+  ]);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'test',
     foxtrot: 'racoondog',
-    [unnamed]: ['--aaa', '-bbb', '-ccc'],
   });
+  expect(options[unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
 });
 test('optionalist string default optMap', () => {
   expect(parse({ aaa: { default: 'aaa' } }, []).aaa).toBe('aaa');
@@ -138,89 +157,121 @@ test('optionalist number default literal falsy', () => {
   expect(parse({ aaa: 0 }, []).aaa).toBe(0);
 });
 test('optionalist string constraints', () => {
-  expect(
-    parse(OPTMAP, ['--delta', 'required', '--golf', 'volkswagen']),
-  ).toEqual({
+  const options = parse(OPTMAP, [
+    '--delta',
+    'required',
+    '--golf',
+    'volkswagen',
+  ]);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     golf: 'volkswagen',
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist string constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--golf', 'sports'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--golf', 'sports']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     golf: 'sports',
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist string constraints', () => {
-  expect(
-    parse(OPTMAP, ['--delta', 'required', '--GOLF', 'VOLKSWAGEN']),
-  ).toEqual({
+  const options = parse(OPTMAP, [
+    '--delta',
+    'required',
+    '--GOLF',
+    'VOLKSWAGEN',
+  ]);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     GOLF: 'volkswagen',
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist string constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--GOLF', 'SPORTS'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--GOLF', 'SPORTS']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     GOLF: 'sports',
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist number constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '1234'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '1234']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     hotel: 1234,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist number constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '5678'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '5678']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     hotel: 5678,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist number constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--hotel', '9012'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '9012']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     hotel: 9012,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist number range constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--india', '1000'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--india', '1000']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     india: 1000,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
 });
 test('optionalist number range constraints', () => {
-  expect(parse(OPTMAP, ['--delta', 'required', '--india', '9999'])).toEqual({
+  const options = parse(OPTMAP, ['--delta', 'required', '--india', '9999']);
+  expect(options).toEqual({
     bravo: 1,
     delta: 'required',
     foxtrot: 'racoondog',
     india: 9999,
-    [unnamed]: [],
   });
+  expect(options[unnamed]).toEqual([]);
+});
+test('optionalist boolean multiple: no constraints', () => {
+  const opt = { aaa: { type: 'boolean', multiple: true } } as const;
+  for (let count = 0; count < 1000; ++count) {
+    expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
+  }
+});
+test('optionalist boolean multiple: constraints.max: 2', () => {
+  const opt = {
+    aaa: { type: 'boolean', multiple: true, constraints: { max: 2 } },
+  } as const;
+  for (let count = 0; count <= opt.aaa.constraints.max; ++count) {
+    expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
+  }
+  expect(() =>
+    parse(opt, Array(opt.aaa.constraints.max + 1).fill('--aaa')),
+  ).toThrow('Exceeded max count(2): --aaa');
 });
 test('optionalist usage error', () => {
   expect(() => parse(OPTMAP, [])).toThrow('--delta required');
@@ -248,7 +299,7 @@ test('optionalist usage error', () => {
     '--bravo needs a number parameter as the b-value: abc',
   );
 });
-test('optionalist usage error', () => {
+test('optionalist usage error x', () => {
   expect(() => parse(OPTMAP, ['--charlie', '111'])).toThrow(
     '--charlie must be specified alone.',
   );
@@ -336,6 +387,10 @@ test('optionalist invalid optMap', () => {
       ['-a', '2'],
     ),
   ).toThrow();
+});
+test('optionalist invalid optMap: type: unknown', () => {
+  // @ts-expect-error 例外を発生させるためエラーになるtypeを指定
+  expect(() => parse({ a: { type: 'unknown' } })).toThrow();
 });
 test('optionalist helpstring', () => {
   expect(parse(OPTMAP, ['--charlie'])[helpString])
@@ -494,24 +549,24 @@ Options:
 test('min only', () => {
   expect(
     parse({ a: { type: 'number', constraints: { min: 10 } } }, ['-a', '10']),
-  ).toEqual({ a: 10, [unnamed]: [] });
+  ).toEqual({ a: 10 });
 });
 test('max only', () => {
   expect(
     parse({ a: { type: 'number', constraints: { max: 10 } } }, ['-a', '10']),
-  ).toEqual({ a: 10, [unnamed]: [] });
+  ).toEqual({ a: 10 });
 });
 
 test('multiple empty', () => {
-  expect(parse({ a: { multiple: true } }, [])).toEqual({
+  const options = parse({ a: { multiple: true } }, []);
+  expect(options).toEqual({
     a: [],
-    [unnamed]: [],
   });
 });
 test('multiple string', () => {
   expect(
     parse({ a: { multiple: true } }, ['-a', 'abc', '-a', 'def', '-a', 'ghi']),
-  ).toEqual({ a: ['abc', 'def', 'ghi'], [unnamed]: [] });
+  ).toEqual({ a: ['abc', 'def', 'ghi'] });
 });
 
 test('multiple number', () => {
@@ -524,7 +579,7 @@ test('multiple number', () => {
       '-a',
       '30',
     ]),
-  ).toEqual({ a: [10, 20, 30], [unnamed]: [] });
+  ).toEqual({ a: [10, 20, 30] });
 });
 test('duplicate string', () => {
   expect(() => parse({ a: {} }, ['-a', 'abc', '-a', 'def'])).toThrow(
@@ -557,43 +612,120 @@ test('pattern constraints', () => {
     () => parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']).a,
   ).toThrow('-a does not match /^\\w+=/.: aaabbb');
 });
+test('string constraints array caseSensitive', () => {
+  const opt = {
+    aaa: { constraints: ['aaa', 'bbb', 'ccc'] },
+  } as const;
+  expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
+  expect(parse(opt, ['--aaa', 'bbb']).aaa).toBe('bbb');
+  expect(parse(opt, ['--aaa', 'ccc']).aaa).toBe('ccc');
+  expect(() => parse(opt, ['--aaa', 'AAA'])).toThrow(
+    '--aaa must be one of aaa, bbb, ccc.: AAA',
+  );
+});
+test('string constraints array ignoreCase', () => {
+  const opt = {
+    aaa: { constraints: ['aaa', 'bbb', 'ccc'], ignoreCase: true },
+  } as const;
+  expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
+  expect(parse(opt, ['--aaa', 'BBB']).aaa).toBe('bbb');
+  expect(parse(opt, ['--aaa', 'CcC']).aaa).toBe('ccc');
+  expect(() => parse(opt, ['--aaa', 'ddd'])).toThrow(
+    '--aaa must be one of aaa, bbb, ccc.: ddd',
+  );
+});
 
+test('number constraints array', () => {
+  const opt = {
+    aaa: { type: 'number', constraints: [1, 3, 5] },
+  } as const;
+  expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
+  expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
+  expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
+  expect(() => parse(opt, ['--aaa', '2'])).toThrow(
+    '--aaa must be one of 1, 3, 5.: 2',
+  );
+});
+test('number constraints array & autoAdjust', () => {
+  const opt = {
+    aaa: { type: 'number', constraints: [1, 3, 5], autoAdjust: true },
+  } as const;
+  expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
+  expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
+  expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
+  expect(parse(opt, ['--aaa', '0']).aaa).toBe(1);
+  expect(parse(opt, ['--aaa', '2']).aaa).toBe(1);
+  expect(parse(opt, ['--aaa', '4']).aaa).toBe(3);
+  expect(parse(opt, ['--aaa', '6']).aaa).toBe(5);
+});
+
+test('min', () => {
+  const opt = {
+    a: { type: 'number', constraints: { min: 1 } },
+  } as const;
+  expect(parse(opt, ['-a', '1']).a).toBe(1);
+  expect(() => parse(opt, ['-a', '0.9']).a).toThrow(
+    '-a must be greater than or equal to 1.: 0.9',
+  );
+});
 test('minExclusive', () => {
-  expect(
-    parse({ a: { type: 'number', constraints: { minExclusive: 1 } } }, [
-      '-a',
-      '1.1',
-    ]),
-  ).toEqual({
-    a: 1.1,
-    [unnamed]: [],
-  });
-  expect(
-    () =>
-      parse(
-        { a: { type: 'number', constraints: { minExclusive: 1 } } } as const,
-        ['-a', '1'],
-      ).a,
-  ).toThrow('-a must be greater than 1.');
+  const opt = {
+    a: { type: 'number', constraints: { minExclusive: 1 } },
+  } as const;
+  expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
+  expect(() => parse(opt, ['-a', '1']).a).toThrow(
+    '-a must be greater than 1.: 1',
+  );
+});
+
+test('max', () => {
+  const opt = {
+    a: { type: 'number', constraints: { max: 10 } },
+  } as const;
+  expect(parse(opt, ['-a', '10']).a).toBe(10);
+  expect(() => parse(opt, ['-a', '10.1']).a).toThrow(
+    '-a must be less than or equal to 10.: 10.1',
+  );
 });
 
 test('maxExclusive', () => {
-  expect(
-    parse({ a: { type: 'number', constraints: { maxExclusive: 10 } } }, [
-      '-a',
-      '9.9',
-    ]),
-  ).toEqual({
-    a: 9.9,
-    [unnamed]: [],
-  });
-  expect(
-    () =>
-      parse(
-        { a: { type: 'number', constraints: { maxExclusive: 10 } } } as const,
-        ['-a', '10'],
-      ).a,
-  ).toThrow('-a must be less than 10.');
+  const opt = {
+    a: { type: 'number', constraints: { maxExclusive: 10 } },
+  } as const;
+  expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
+  expect(() => parse(opt, ['-a', '10']).a).toThrow(
+    '-a must be less than 10.: 10',
+  );
+});
+test('min & autoAdjust', () => {
+  const opt = {
+    a: { type: 'number', constraints: { min: 1 }, autoAdjust: true },
+  } as const;
+  expect(parse(opt, ['-a', '1']).a).toBe(1);
+  expect(parse(opt, ['-a', '0.9']).a).toBe(1);
+});
+test('minExclusive & autoAdjust', () => {
+  const opt = {
+    a: { type: 'number', constraints: { minExclusive: 1 }, autoAdjust: true },
+  } as const;
+  expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
+  expect(parse(opt, ['-a', '1']).a).toBe(1 + Number.EPSILON);
+});
+
+test('max & autoAdjust', () => {
+  const opt = {
+    a: { type: 'number', constraints: { max: 10 }, autoAdjust: true },
+  } as const;
+  expect(parse(opt, ['-a', '10']).a).toBe(10);
+  expect(parse(opt, ['-a', '10.1']).a).toBe(10);
+});
+
+test('maxExclusive & autoAdjust', () => {
+  const opt = {
+    a: { type: 'number', constraints: { maxExclusive: 10 }, autoAdjust: true },
+  } as const;
+  expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
+  expect(parse(opt, ['-a', '10']).a).toBe(10 - Number.EPSILON);
 });
 test('max&maxExclusive', () => {
   expect(() =>

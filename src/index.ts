@@ -399,6 +399,12 @@ type NumberOption = OptionWithValue<number> &
          * 配列の場合は、ここで設定した値以外を指定するとエラーになる。
          */
         constraints: readonly [number, ...number[]];
+        /**
+         * 指定された値が配列になかった場合に一番近い値にする場合はtrueを指定する。
+         *
+         * 差が同じ場合は配列の先に存在する方を選択する。
+         */
+        autoAdjust?: true;
       }
     | {
         /**
@@ -429,6 +435,12 @@ type NumberOption = OptionWithValue<number> &
           // それぞれ省略可能だが、すべて省略された場合はエラーとする
           Partial<Record<string, never>>
         >;
+        /**
+         * 指定された値が範囲内になかった場合に一番範囲に近い値にする場合はtrueを指定する。
+         *
+         * maxExclusive/minExclusiveが指定されている場合は、その値からNumber.EPSILONを増減した値とする。
+         */
+        autoAdjust?: true;
       }
     | {
         constraints?: never;
@@ -438,7 +450,30 @@ type NumberOption = OptionWithValue<number> &
 /** 真偽値型のオプション情報 */
 type FlagOption = OptionBase<boolean> & {
   alone?: true;
-} & Partial<Record<'constraints' | 'required' | 'multiple' | 'default', never>>; // booleanにはこれらを指定できない。
+} & (
+    | {
+        /**
+         *
+         * booleanではmultipleを指定するとその指定された回数が取得できる。
+         */
+        multiple: true;
+        /**
+         *
+         * booleanではmultipleを指定したときだけconstraintsにmaxを指定できる。
+         */
+        constraints?: {
+          /**
+           * 複数回指定できる最大回数を設定する。
+           */
+          max: number;
+        };
+      }
+    | {
+        multiple?: never;
+        constraints?: never;
+      }
+  ) &
+  Partial<Record<'required' | 'default', never>>; // booleanにはこれらを指定できない。
 
 interface UnnamedOptionInfo {
   /**
@@ -525,8 +560,12 @@ type OptionType<
 > =
   // typeの値で振り分け
   OptionTypeName<OptionInfo> extends 'boolean'
-    ? // typeがbooleanなら真偽値
-      true // だが、falseにすることはできないのでtrueになる。
+    ? // typeがbooleanなら
+      OptionInfo extends { multiple: true }
+      ? // multipleが指定されていれば指定された回数なのでnumber
+        number
+      : // でなければ真偽値
+        true // だが、falseにすることはできないのでtrueになる。
     : OptionTypeName<OptionInfo> extends 'number'
     ? // typeがnumberなら数値型
       OptionInfo extends { constraints: readonly number[] }
@@ -565,7 +604,16 @@ type OptionsAccompany<OPTMAP extends OptionInformationMap> = Combination<
                   OPTMAP[N]
                 >;
               }
-            : // multipleが指定されているものは配列型
+            : // multipleが指定されている真偽値なら数値型
+            OPTMAP[N] extends { type: 'boolean'; multiple: true }
+            ? {
+                readonly [K in N as CamelCase<K>]: PropertyDescribedType<
+                  number,
+                  N,
+                  OPTMAP[N]
+                >;
+              }
+            : // 上記以外でmultipleが指定されているものは配列型
             OPTMAP[N] extends { multiple: true }
             ? {
                 readonly [K in N as CamelCase<K>]: PropertyDescribedType<
@@ -660,7 +708,7 @@ class CommandLineParsingError extends Error {
  */
 function usage(...args: [TemplateStringsArray, ...unknown[]]): never {
   throw new CommandLineParsingError(
-    args[0].reduce((r, e, i) => r + String(args[i]) + e),
+    args[0].reduce((r, e, i) => `${r}${args[i]}${e}`),
   );
 }
 
@@ -834,11 +882,18 @@ function assertNumberOption(info: NumberOption) {
 
 function assertFlagOption(info: FlagOption) {
   assert(
-    info.required === undefined &&
-      info.default === undefined &&
-      info.multiple === undefined &&
-      info.constraints === undefined,
-    'boolean型ではrequired/default値/multiple/constraintsを指定できない',
+    info.required === undefined && info.default === undefined,
+    'boolean型ではrequired/default値を指定できない',
+  );
+  assert(
+    info.multiple || !info.constraints,
+    'boolean型でconstraintsを指定できるのはmultipleを指定したときだけ',
+  );
+  assert(
+    !info.multiple ||
+      !info.constraints ||
+      typeof info.constraints.max === 'number',
+    'boolean型でmultipleとconstraintsを指定したときmaxには数値が指定されていなければならない',
   );
 }
 
@@ -854,6 +909,7 @@ function assertFlagOption(info: FlagOption) {
 function assertValidOptMap(optMap: NormalizedOptionInformationMap): void {
   for (const info of Object.values(optMap)) {
     // 型指定のチェック
+    // istanbul ignore next defaultへの分岐がcoverできないのでここはチェックしない
     switch (info.type) {
       case 'string':
         assertStringOption(info);
@@ -864,6 +920,11 @@ function assertValidOptMap(optMap: NormalizedOptionInformationMap): void {
       case 'boolean':
         assertFlagOption(info);
         break;
+      default:
+        assertNever(
+          info,
+          '正規化されているのでstring/number/boolean以外はないはず',
+        );
     }
     assert(
       (info.default !== undefined ? 1 : 0) +
@@ -877,61 +938,34 @@ function assertValidOptMap(optMap: NormalizedOptionInformationMap): void {
   }
 }
 
-type ParseContext = {
-  /** 名前付きオプション(ヘルプ用文字列付き) */
-  readonly options: Partial<
-    Record<string, string | number | true | string[] | number[]>
-  > & {
-    readonly [helpString]: string;
-  };
-  /** エイリアスを含めたオプションの詳細マップ */
-  readonly optMapAlias: Record<
-    string,
-    {
-      readonly name: string;
-      readonly info: Readonly<NormalizedOptionInformationMap[string]>;
-    }
-  >;
-  /** 無名オプション */
-  readonly unnamedList: string[];
-  /** 単独で指定されるはずのオプション */
-  aloneOpt?: string;
-  /** 一つ前に指定されたオプション */
-  prevOpt?: string;
-};
+/** 名前付きオプション */
+type NamedOptionMap = Partial<
+  Record<string, string | number | true | string[] | number[]>
+>;
+/** 無名オプション */
+type UnnamedOptionList = string[];
 
-function initParseContext(
-  optMap: NormalizedOptionInformationMap,
-): ParseContext {
-  return {
-    /** 名前付きオプション(ヘルプ用文字列付き) */
-    options: Object.defineProperty({}, helpString, {
-      // ヘルプ用文字列は使わない可能性があるのでgetterとして用意
-      get: () => makeHelpString(optMap),
-    }) as ParseContext['options'],
-    // エイリアスを含めたオプションの詳細マップ
-    optMapAlias: expandAlias(optMap),
-    /** 無名オプション */
-    unnamedList: [],
-  };
-}
+/** エイリアスを含めたオプションの詳細マップ */
+type ExpandedOptionInformationMap = Record<
+  string,
+  {
+    name: string;
+    entryName: string;
+    info: NormalizedOptionInformationMap[string];
+  }
+>;
 
 /**
  * aliasを含めたオプションの詳細マップを構築する。
  *
  * @template OptMap
- * @param {OptMap} optMap
+ * @param {NormalizedOptionInformationMap} optMap
  * @returns
  */
-function expandAlias(optMap: NormalizedOptionInformationMap) {
-  const map: Record<
-    string,
-    {
-      name: string;
-      entryName: string;
-      info: NormalizedOptionInformationMap[string];
-    }
-  > = {};
+function expandAlias(
+  optMap: NormalizedOptionInformationMap,
+): ExpandedOptionInformationMap {
+  const map: ExpandedOptionInformationMap = {};
   for (const [name, info] of Object.entries(optMap)) {
     const camelCaseName = camelCase(name);
     const { entryName: existName } =
@@ -970,11 +1004,15 @@ function parseStringOption(
   name: string,
   info: StringOption,
   itr: Iterator<string, unknown, undefined>,
-  options: ParseContext['options'],
-): boolean {
+  options: NamedOptionMap,
+): void {
   const r = itr.next();
   if (r.done) {
     return usage`${arg} needs a parameter as the ${example(info)}`;
+  }
+  if (!info.multiple && name in options) {
+    // 既に設定済みならエラー
+    return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
   }
   const value = (value => {
     if (!info.constraints) {
@@ -987,26 +1025,25 @@ function parseStringOption(
         ? value
         : usage`${arg} does not match ${info.constraints}.: ${value}`;
     }
-    const findText = info.ignoreCase ? value.toUpperCase() : value;
-    // 指定された候補と一致したらその候補を返す
-    return (
-      info.constraints.find(
-        s => (info.ignoreCase ? s.toUpperCase() : s) === findText,
-      ) ??
-      usage`${arg} must be one of ${info.constraints.join(', ')}.: ${value}`
-    );
+    if (info.ignoreCase) {
+      const findText = value.toUpperCase();
+      // 指定された候補と一致したらその候補を返す
+      return (
+        info.constraints.find(s => s.toUpperCase() === findText) ??
+        usage`${arg} must be one of ${info.constraints.join(', ')}.: ${value}`
+      );
+    }
+    // 指定された候補と一致したら値を返す
+    return info.constraints.includes(value)
+      ? value
+      : usage`${arg} must be one of ${info.constraints.join(', ')}.: ${value}`;
   })(r.value);
   if (info.multiple) {
     // 複数指定可能な場合は配列に格納
     ((options[name] ??= []) as string[]).push(value);
   } else {
-    if (name in options) {
-      // 既に設定済みならエラー
-      return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
-    }
     options[name] = value;
   }
-  return true;
 }
 
 function parseNumberOption(
@@ -1014,144 +1051,188 @@ function parseNumberOption(
   name: string,
   info: NumberOption,
   itr: Iterator<string, unknown, undefined>,
-  options: ParseContext['options'],
-): boolean {
+  options: NamedOptionMap,
+): void {
   const r = itr.next();
   if (r.done) {
     return usage`${arg} needs a number parameter as the ${example(info)}`;
   }
-  const value = +r.value;
-  if (!isFinite(value)) {
-    return usage`${arg} needs a number parameter as the ${example(info)}: ${
-      r.value
-    }`;
+  if (!info.multiple && name in options) {
+    // 既に設定済みならエラー
+    return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
   }
-  if (info.constraints) {
+  const value = (value => {
+    if (!isFinite(value)) {
+      return usage`${arg} needs a number parameter as the ${example(info)}: ${
+        r.value
+      }`;
+    }
+    if (!info.constraints) {
+      return value;
+    }
     // 制約の指定があれば条件を確認
     if (Array.isArray(info.constraints)) {
-      if (!info.constraints.includes(value)) {
-        return usage`${arg} must be one of ${info.constraints.join(', ')}.`;
+      if (info.constraints.includes(value)) {
+        // 候補の中に一致する値があればそのまま返す。
+        return value;
       }
-    } else {
-      if (info.constraints.min !== undefined && value < info.constraints.min) {
-        return usage`${arg} must be greater than or equal to ${info.constraints.min}.`;
+      if (info.autoAdjust) {
+        // 候補の中から値との差が最小のものを検索。差が同じ場合は最初に見つかったもの。
+        const min = { value: NaN, diff: Infinity };
+        for (const candidate of info.constraints) {
+          const diff = Math.abs(candidate - value);
+          if (min.diff > diff) {
+            min.diff = diff;
+            min.value = candidate;
+          }
+        }
+        // 候補は長さ1以上の配列なので必ず見つかる
+        return min.value;
       }
-      if (
-        info.constraints.minExclusive !== undefined &&
-        value <= info.constraints.minExclusive
-      ) {
-        return usage`${arg} must be greater than ${info.constraints.minExclusive}.`;
-      }
-      if (info.constraints.max !== undefined && value > info.constraints.max) {
-        return usage`${arg} must be less than or equal to ${info.constraints.max}.`;
-      }
-      if (
-        info.constraints.maxExclusive !== undefined &&
-        value >= info.constraints.maxExclusive
-      ) {
-        return usage`${arg} must be less than ${info.constraints.maxExclusive}.`;
-      }
+      return usage`${arg} must be one of ${info.constraints.join(', ')}.: ${
+        r.value
+      }`;
     }
-  }
+    // 最大値、最小値での制約
+    if (info.constraints.min !== undefined && value < info.constraints.min) {
+      if (info.autoAdjust) {
+        return info.constraints.min;
+      }
+      return usage`${arg} must be greater than or equal to ${info.constraints.min}.: ${r.value}`;
+    }
+    if (
+      info.constraints.minExclusive !== undefined &&
+      value <= info.constraints.minExclusive
+    ) {
+      if (info.autoAdjust) {
+        return info.constraints.minExclusive + Number.EPSILON;
+      }
+      return usage`${arg} must be greater than ${info.constraints.minExclusive}.: ${r.value}`;
+    }
+    if (info.constraints.max !== undefined && value > info.constraints.max) {
+      if (info.autoAdjust) {
+        return info.constraints.max;
+      }
+      return usage`${arg} must be less than or equal to ${info.constraints.max}.: ${r.value}`;
+    }
+    if (
+      info.constraints.maxExclusive !== undefined &&
+      value >= info.constraints.maxExclusive
+    ) {
+      if (info.autoAdjust) {
+        return info.constraints.maxExclusive - Number.EPSILON;
+      }
+      return usage`${arg} must be less than ${info.constraints.maxExclusive}.: ${r.value}`;
+    }
+    return value;
+  })(+r.value);
   if (info.multiple) {
     // 複数指定可能な場合は配列に格納
     ((options[name] ??= []) as number[]).push(value);
   } else {
-    if (name in options) {
-      // 既に設定済みならエラー
-      return usage`Duplicate ${arg}: ${options[name]}, ${value}`;
-    }
     options[name] = value;
   }
-  return true;
 }
 
 function parseFlagOption(
   arg: string,
   name: string,
-  _info: FlagOption,
-  _itr: Iterator<string, unknown, undefined>,
-  options: ParseContext['options'],
-): boolean {
+  info: FlagOption,
+  _: Iterator<string, unknown, undefined>,
+  options: NamedOptionMap,
+): void {
+  if (info.multiple) {
+    // 複数指定可能な場合は回数をカウント
+    let value = options[name];
+    if (typeof value !== 'number') {
+      value = 0;
+    }
+    ++value;
+    if (info.constraints && info.constraints.max < value) {
+      // 最大回数を超えてしまったらエラー
+      return usage`Exceeded max count(${info.constraints.max}): ${arg}`;
+    }
+    options[name] = value;
+    return;
+  }
+
   if (name in options) {
     // 既に設定済みならエラー
     return usage`Duplicate ${arg}`;
   }
   options[name] = true;
-  return true;
 }
 
-/**
- * オプションを1つ解析する。
- *
- * @param {string} arg
- * @param {Iterator<string, unknown, undefined>} itr
- * @param {ParseContext} context
- * @returns {boolean} 次以降のオプション解析を終了する場合はfalseを返す。
- */
-function parseOption(
-  arg: string,
-  itr: Iterator<string, unknown, undefined>,
-  context: ParseContext,
-): boolean {
-  const { options, optMapAlias, unnamedList, aloneOpt, prevOpt } = context;
-  if (arg === '--') {
+function processOptions(
+  itr: Iterator<string>,
+  optMapAlias: ExpandedOptionInformationMap,
+): {
+  options: NamedOptionMap;
+  unnamedList: UnnamedOptionList;
+  alone: boolean;
+} {
+  const unnamedList: UnnamedOptionList = [];
+  const options: NamedOptionMap = {};
+  let aloneOpt;
+  for (let r, firstOpt = true; !(r = itr.next()).done; firstOpt = false) {
+    const arg = r.value;
     if (aloneOpt) {
       // 単独で指定されるはずなのに他のオプションが指定された
       return usage`${aloneOpt} must be specified alone.`;
     }
-    // --以降はすべて無名オプション
-    for (let r; !(r = itr.next()).done; ) {
-      unnamedList.push(r.value);
+    if (arg === '--') {
+      // --以降はすべて無名オプション
+      for (let r; !(r = itr.next()).done; ) {
+        unnamedList.push(r.value);
+      }
+      // 解析はこれで終了
+      break;
     }
-    return false;
-  }
-  if (!optMapAlias[arg]) {
-    if (arg[0] === '-') {
-      // optMapにないオプションが指定された
-      return usage`unknown options: ${arg}`;
+    if (!optMapAlias[arg]) {
+      if (arg[0] === '-') {
+        // optMapにないオプションが指定された
+        return usage`unknown options: ${arg}`;
+      }
+      unnamedList.push(arg);
+      continue;
     }
-    unnamedList.push(arg);
-    return true;
+    const { name, info } = optMapAlias[arg];
+    if (info.alone) {
+      if (!firstOpt) {
+        // 単独で指定されるはずなのに既に他のオプションが指定されている
+        return usage`${arg} must be specified alone.`;
+      }
+      aloneOpt = arg;
+    }
+    // istanbul ignore next defaultへの分岐がcoverできないのでここはチェックしない
+    switch (info.type) {
+      case 'string':
+        parseStringOption(arg, name, info, itr, options);
+        break;
+      case 'number':
+        parseNumberOption(arg, name, info, itr, options);
+        break;
+      case 'boolean':
+        parseFlagOption(arg, name, info, itr, options);
+        break;
+      default:
+        assertNever(
+          info,
+          '正規化されているのでstring/number/boolean以外はないはず',
+        );
+    }
   }
-  const { name, info } = optMapAlias[arg];
-  assert(typeof info === 'object', 'infoはobjectのはず');
-  if (aloneOpt || (prevOpt && info.alone)) {
-    // 単独で指定されるはずなのに他のオプションが指定された
-    return usage`${aloneOpt || arg} must be specified alone.`;
-  }
-  context.prevOpt = arg;
-  if (info.alone) {
-    context.aloneOpt = arg;
-  }
-  switch (info.type) {
-    case 'string':
-      return parseStringOption(arg, name, info, itr, options);
-    case 'number':
-      return parseNumberOption(arg, name, info, itr, options);
-    case 'boolean':
-      return parseFlagOption(arg, name, info, itr, options);
-  }
+  return {
+    options,
+    unnamedList,
+    alone: aloneOpt !== undefined,
+  };
 }
 
-/**
- * 解析結果が適切かどうかチェックする。
- *
- * @param {ParseContext} context
- * @param {OptionInformationMap[typeof unnamed]} [optUnnamed]
- */
-function validateOptions(
-  { optMapAlias, aloneOpt, unnamedList, options }: ParseContext,
-  optUnnamed?: OptionInformationMap[typeof unnamed],
+function validateNamedOptions(
+  options: NamedOptionMap,
+  optMapAlias: ExpandedOptionInformationMap,
 ): void {
-  if (aloneOpt) {
-    if (unnamedList.length > 0) {
-      // 単独オプションが指定されていたら無名オプションがあればエラー
-      return usage`${aloneOpt} must be specified alone.`;
-    }
-    // 単独オプションが指定されていたらデフォルト値の設定を行わない
-    return;
-  }
   for (const [optArg, { name, info }] of Object.entries(optMapAlias)) {
     // 指定されていればスキップ
     if (name in options) {
@@ -1167,29 +1248,84 @@ function validateOptions(
       options[name] = info.default;
       continue;
     }
-    // 複数指定の場合は指定されていなくても空配列を設定
+    // 複数指定の場合は指定されていなくても0もしくは空配列を設定
     if (info.multiple) {
-      options[name] = [];
+      options[name] = info.type === 'boolean' ? 0 : [];
       continue;
     }
   }
-  if (optUnnamed) {
-    const { min, max } = optUnnamed;
-    if (min !== undefined && unnamedList.length < min) {
-      return usage`At least ${min} ${example(optUnnamed, true)} required.`;
-    }
-    if (max !== undefined && unnamedList.length > max) {
-      return usage`Too many ${example(
-        optUnnamed,
-        true,
-      )} specified(up to ${max}).`;
-    }
+}
+
+function validateUnnamedOptions(
+  unnamedList: UnnamedOptionList,
+  optMapUnnamed: UnnamedOptionInfo,
+): void {
+  // 無名オプションの制約
+  const { min, max } = optMapUnnamed;
+  if (min !== undefined && unnamedList.length < min) {
+    return usage`At least ${min} ${example(optMapUnnamed, true)} required.`;
   }
-  // 無名オプションを追加
-  Object.defineProperty(options, unnamed, {
-    value: Object.freeze(unnamedList),
-    enumerable: true,
-  });
+  if (max !== undefined && unnamedList.length > max) {
+    return usage`Too many ${example(
+      optMapUnnamed,
+      true,
+    )} specified(up to ${max}).`;
+  }
+}
+
+/**
+ * オプションを解析する。
+ *
+ * @param {Iterator<string, unknown, undefined>} itr
+ * @param {ParseContext} context
+ */
+function parseOptions(
+  itr: Iterator<string>,
+  optMap: NormalizedOptionInformationMap,
+): NamedOptionMap {
+  // エイリアスを含めたオプションの詳細マップ
+  const optMapAlias = expandAlias(optMap);
+  try {
+    const {
+      /** 単独で指定されるオプション */
+      alone,
+      /** 名前付きオプション */
+      options,
+      /** 無名オプション */
+      unnamedList,
+    } = processOptions(itr, optMapAlias);
+    // 単独オプションが指定されていたらデフォルト値の設定、および無名オプションの追加を行わない
+    if (!alone) {
+      // デフォルト値の設定など指定されなかったオプションの処理
+      validateNamedOptions(options, optMapAlias);
+      if (optMap[unnamed]) {
+        validateUnnamedOptions(unnamedList, optMap[unnamed]);
+      }
+      // 無名オプションを追加
+      Object.defineProperty(options, unnamed, {
+        value: Object.freeze(unnamedList),
+      });
+    }
+    // helpStringを追加
+    Object.defineProperty(options, helpString, {
+      get() {
+        return makeHelpString(optMap);
+      },
+    });
+    // 変更不可にする
+    Object.freeze(options);
+    return options;
+  } catch (ex) {
+    if (
+      optMap[helpString]?.showUsageOnError &&
+      ex instanceof CommandLineParsingError
+    ) {
+      // showUsageOnErrorが指定されていた場合は、解析エラー発生時にヘルプを表示して終了する
+      process.stderr.write(`${ex.message}\n\n${makeHelpString(optMap)}`);
+      process.exit(1);
+    }
+    throw ex;
+  }
 }
 
 /**
@@ -1376,8 +1512,6 @@ export function parse<OptMap extends OptionInformationMap>(
   const optMap = normalizeOptMap(_optMap);
   // optMapの内容チェック
   assertValidOptMap(optMap);
-  // 解析用コンテキストの準備
-  const context: ParseContext = initParseContext(optMap);
   // 解析対象のパラメーター取得
   const itr =
     args?.[Symbol.iterator]() ??
@@ -1389,22 +1523,7 @@ export function parse<OptMap extends OptionInformationMap>(
       itr.next();
       return itr;
     })();
-  try {
-    for (let r; !(r = itr.next()).done && parseOption(r.value, itr, context); );
-    validateOptions(context, optMap[unnamed]);
-  } catch (ex: unknown) {
-    if (
-      optMap[helpString]?.showUsageOnError &&
-      ex instanceof CommandLineParsingError
-    ) {
-      // showUsageOnErrorが指定されていた場合は、解析時にエラーが発生したらヘルプを表示して終了する
-      process.stderr.write(`${ex.message}\n\n${context.options[helpString]}`);
-      process.exit(1);
-    }
-    throw ex;
-  }
-  // 変更不可にして返す
-  return Object.freeze(context.options) as Options<OptMap>;
+  return parseOptions(itr, optMap) as Options<OptMap>;
 }
 
 function assert(o: unknown, message?: string | (() => string)): asserts o {
