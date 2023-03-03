@@ -677,6 +677,111 @@ type Options<OPTMAP extends OptionInformationMap> =
   | OptionsAccompany<OPTMAP>
   | OptionsAlone<OPTMAP>;
 
+type _TEST_Options1 = Validate<
+  TypeTest<
+    Options<{
+      // eslint-disable-next-line @typescript-eslint/ban-types
+      aaa: {};
+      bbb: { type: 'number' };
+      ccc: { type: 'boolean' };
+      ddd: { type: 'boolean'; multiple: true };
+      eee: { type: 'number'; multiple: true };
+      fff: { multiple: true };
+      ggg: { type: 'string' };
+      hhh: { type: 'number'; required: true };
+      iii: { required: true };
+      jjj: { type: 'string'; required: true };
+      kkk: { default: 'kkk' };
+      lll: { type: 'string'; default: 'lll' };
+      mmm: { type: 'number'; default: 123 };
+      nnn: { constraints: ['nnn', 'NNN', 'NnN'] };
+      ooo: { type: 'string'; constraints: ['ooo', 'OOO', 'oOo'] };
+      ppp: { type: 'number'; constraints: [1, 3, 5] };
+      qqq: { type: 'boolean'; alone: true };
+    }>,
+    | {
+        readonly [unnamed]: readonly string[];
+        readonly [helpString]: string;
+        readonly aaa?: string & { [description]: ['--aaa parameter'] };
+        readonly bbb?: number & { [description]: ['--bbb parameter'] };
+        readonly ccc?: true & { [description]: ['--ccc'] };
+        readonly ddd: number & {
+          [description]: ['--ddd', 'can be specified more than once.'];
+        };
+        readonly eee: readonly number[] & {
+          [description]: [
+            '--eee parameter',
+            'can be specified more than once.',
+          ];
+        };
+        readonly fff: readonly string[] & {
+          [description]: [
+            '--fff parameter',
+            'can be specified more than once.',
+          ];
+        };
+        readonly ggg?: string & { [description]: ['--ggg parameter'] };
+        readonly hhh: number & {
+          [description]: ['--hhh parameter', 'must be specified always.'];
+        };
+        readonly iii: string & {
+          [description]: ['--iii parameter', 'must be specified always.'];
+        };
+        readonly jjj: string & {
+          [description]: ['--jjj parameter', 'must be specified always.'];
+        };
+        readonly kkk: string & {
+          [description]: ['--kkk parameter', "is equal to 'kkk' if omitted."];
+        };
+        readonly lll: string & {
+          [description]: ['--lll parameter', "is equal to 'lll' if omitted."];
+        };
+        readonly mmm: number & {
+          [description]: ['--mmm parameter', 'is equal to 123 if omitted.'];
+        };
+        readonly nnn?: ('nnn' | 'NNN' | 'NnN') & {
+          [description]: [
+            '--nnn parameter',
+            "must be either 'nnn', 'NNN', 'NnN'.",
+          ];
+        };
+        readonly ooo?: ('ooo' | 'OOO' | 'oOo') & {
+          [description]: [
+            '--ooo parameter',
+            "must be either 'ooo', 'OOO', 'oOo'.",
+          ];
+        };
+        readonly ppp?: (1 | 3 | 5) & {
+          [description]: ['--ppp parameter', 'must be either 1, 3, 5.'];
+        };
+        readonly qqq?: never;
+      }
+    | {
+        readonly [unnamed]?: never;
+        readonly [helpString]: string;
+        readonly aaa?: never;
+        readonly bbb?: never;
+        readonly ccc?: never;
+        readonly ddd?: never;
+        readonly eee?: never;
+        readonly fff?: never;
+        readonly ggg?: never;
+        readonly hhh?: never;
+        readonly iii?: never;
+        readonly jjj?: never;
+        readonly kkk?: never;
+        readonly lll?: never;
+        readonly mmm?: never;
+        readonly nnn?: never;
+        readonly ooo?: never;
+        readonly ppp?: never;
+        readonly qqq: true & {
+          [description]: ['--qqq', 'must be specified alone.'];
+        };
+      }
+  >
+>;
+
 /**
  * 指定した第1引数がnever型になっているかどうかチェックする。
  *
