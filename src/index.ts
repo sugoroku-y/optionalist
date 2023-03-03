@@ -81,6 +81,8 @@ type PropertyDescribedType<TYPE, NAME, OPT> = NAME extends string
       [
         `${Hyphenate<NAME>}${TYPE extends boolean
           ? ''
+          : OPT extends { type: 'boolean' }
+          ? ''
           : ` ${OPT extends { example: `${infer EXAMPLE}` }
               ? EXAMPLE
               : 'parameter'}`}${OPT extends {
