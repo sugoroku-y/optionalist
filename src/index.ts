@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { resolve } from 'path';
 
 /**
@@ -1438,34 +1437,22 @@ function parseOptions(
  *
  * @returns
  */
-function loadPackageJson() {
-  // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
-  if (!module.parent) {
-    // 親モジュールがない≒プログラムとしての起動ではないので空の情報を返す
-    return {};
-  }
-  for (const path of module.parent.paths) {
-    let text;
+function loadPackageJson(): {
+  version: string;
+  name: string;
+} {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  for (const path of module.parent!.paths) {
     try {
-      // package.jsonを読み込む
-      text = fs.readFileSync(resolve(path, '..', 'package.json'), 'utf8');
-    } catch (ex: unknown) {
-      // ファイルが見つからない、以外のエラーはエラーとする
-      // istanbul ignore next ファイルが存在しない以外のエラーを発生させるのは大変なのでcoverage対象から除外
-      if (
-        !ex ||
-        (typeof ex !== 'object' && typeof ex !== 'function') ||
-        !('code' in ex) ||
-        ex.code !== 'ENOENT'
-      ) {
-        // istanbul ignore next 同上でcoverage対象から除外
-        throw ex;
+      // requireでpackage.jsonを読み込む
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+      const { version, name } = require(resolve(path, '..', 'package.json'));
+      if (typeof version === 'string' && typeof name === 'string') {
+        return { version, name };
       }
-      // ファイルが見つからなかったらさかのぼりを継続
-      // istanbul ignore next package.jsonがない場所を用意できないのでcoverage対象から除外
-      continue;
+    } catch {
+      // エラーはファイルが見つからなかったものとし、さかのぼりを継続
     }
-    return JSON.parse(text) as { version?: string; name?: string };
   }
   // package.jsonが見つからなければエラー
   // istanbul ignore next module.parent.pathsから遡って見つからないことはあり得ないのでcoverage対象から除外
