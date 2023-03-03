@@ -1512,12 +1512,7 @@ function indent(text: string | undefined, indent: string): string[] {
  */
 function makeHelpString(optMap: NormalizedOptionInformationMap): string {
   const { version, name: processName } = loadPackageJson();
-  const help: string[] = [];
-  /* istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外 */
-  if (processName && version) {
-    help.push(`Version: ${processName} ${version}`);
-  }
-  help.push('Usage:');
+  const help: string[] = [`Version: ${processName} ${version}`, 'Usage:'];
   const requiredList: string[] = [];
   const optionalList: string[] = [];
   const aloneList: string[] = [];
@@ -1534,15 +1529,7 @@ function makeHelpString(optMap: NormalizedOptionInformationMap): string {
     }
     aloneList.unshift(line.join(' '));
   }
-  help.push(
-    ...aloneList.map(
-      option =>
-        `  node ${
-          // istanbul ignore next テスト実行時に親モジュールがないことはないのでcoverage対象から除外
-          processName ?? process.argv[1]
-        } ${option}`,
-    ),
-  );
+  help.push(...aloneList.map(option => `  node ${processName} ${option}`));
   {
     const describe = indent(optMap[helpString]?.describe, '  ');
     if (describe.length) {
