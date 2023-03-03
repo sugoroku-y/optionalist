@@ -843,8 +843,7 @@ function example(info: { example?: string }, unnamed?: true): string {
  * オプション名の前に`-`(hyphen)を付ける。
  *
  * 名前が1文字であれば`-`1文字だけ、2文字以上の名前のときは'--'を付ける。
- * @template NAME
- * @param {NAME} name
+ * @param {string} name
  * @returns
  */
 function hyphenate(name: string): `${'--' | '-'}${string}` {
@@ -858,8 +857,9 @@ function hyphenate(name: string): `${'--' | '-'}${string}` {
 
 /**
  * ケバブケースをキャメルケースに変換
- * @param kebabCase キャメルケースに変換するケバブケース
- * @returns ケバブケースからキャメルケースに変換した文字列。
+ * @template {string} KEBABCASE
+ * @param {KEBABCASE} kebabCase キャメルケースに変換するケバブケース
+ * @returns {CamelCase<KEBABCASE>} ケバブケースからキャメルケースに変換した文字列。
  *
  * `kebabCase`が`-`を含まない場合は元の文字列を返す。
  */
@@ -1009,7 +1009,7 @@ function assertFlagOption(info: FlagOption) {
  *
  * TypeScriptから利用しているのであればコンパイル時にチェックされているはずだが、念の為チェックする。
  *
- * @template OptMap
+ * 一部、コンパイル時にはチェックできないものもある。
  * @param optMap 解析するための情報。
  * @throws optMapに問題がある場合はTypeErrorを投げる。
  */
@@ -1065,7 +1065,6 @@ type ExpandedOptionInformationMap = Record<
 /**
  * aliasを含めたオプションの詳細マップを構築する。
  *
- * @template OptMap
  * @param {NormalizedOptionInformationMap} optMap
  * @returns
  */
@@ -1522,8 +1521,7 @@ function indent(text: string | undefined, indent: string): string[] {
  *
  * package.jsonの内容やparseメソッドの引数として渡されたコマンドラインオプションの詳細情報から自動的に生成する。
  *
- * @template OptMap
- * @param {OptMap} optMap コマンドラインオプションの詳細情報。
+ * @param {NormalizedOptionInformationMap} optMap コマンドラインオプションの詳細情報。
  * @returns {string} コマンドラインオプションのヘルプ用文字列。
  */
 function makeHelpString(optMap: NormalizedOptionInformationMap): string {
@@ -1606,6 +1604,7 @@ function makeHelpString(optMap: NormalizedOptionInformationMap): string {
 /**
  * コマンドラインをoptMapにしたがって解析する。
  *
+ * @template {OptionInformationMap} OptMap
  * @param optMap 解析するための情報。
  * @param args 解析するコマンドライン。
  * 省略時はprocess.argvの3つめから開始する。
