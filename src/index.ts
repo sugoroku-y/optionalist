@@ -866,9 +866,8 @@ function hyphenate(name: string): `${'--' | '-'}${string}` {
 function camelCase<KEBABCASE extends string>(
   kebabCase: KEBABCASE,
 ): CamelCase<KEBABCASE> {
-  return kebabCase.replace(
-    /(?<!^)-[^-]+/g,
-    word => `${word.charAt(1).toUpperCase()}${word.slice(2)}`,
+  return kebabCase.replace(/(?<!^)-[^-]/g, ch =>
+    ch.charAt(1).toUpperCase(),
   ) as CamelCase<KEBABCASE>;
 }
 
