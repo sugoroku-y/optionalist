@@ -960,23 +960,46 @@ function assertNumberOption(info: NumberOption) {
     return;
   }
   if (typeof info.constraints === 'object') {
+    const entries = Object.entries(info.constraints) as [
+      `${'min' | 'max'}${'' | 'Exclusive'}`,
+      number,
+    ][];
     assert(
-      typeof info.constraints.max === 'number' ||
-        typeof info.constraints.maxExclusive === 'number' ||
-        typeof info.constraints.min === 'number' ||
-        typeof info.constraints.minExclusive === 'number',
-      'number型ではconstraintsにmax/maxExclusive/min/minExclusiveのいずれも存在しないオブジェクトを指定できない',
+      entries.length > 0,
+      'number型ではconstraintsに空のオブジェクトを指定できない',
     );
     assert(
-      info.constraints.max === undefined ||
-        info.constraints.maxExclusive === undefined,
-      'number型ではconstraintsにmax/maxExclusiveの両方が存在するオブジェクトを指定できない',
+      entries.length <= 2,
+      'number型ではconstraintsに2つまでしかプロパティを指定できない',
     );
     assert(
-      info.constraints.min === undefined ||
-        info.constraints.minExclusive === undefined,
-      'number型ではconstraintsにmin/minExclusiveの両方が存在するオブジェクトを指定できない',
+      entries.every(([name]) => /^(?:min|max)(?:Exclusive)?$/.test(name)),
+      'number型ではconstraintsにmin/max/minExclusive/maxExclusive以外のプロパティを指定できない',
     );
+    assert(
+      entries.every(([, value]) => typeof value === 'number'),
+      'number型ではconstraintsに数値以外のプロパティを指定できない',
+    );
+    if (entries.length === 2) {
+      assert(
+        entries[0][0].slice(0, 3) !== entries[1][0].slice(0, 3),
+        'number型ではconstraintsにmin/minExclusive、もしくはmax/maxExclusiveの組合せで指定できない',
+      );
+      // min/minExclusiveのいずれか
+      const min = entries.find(([name]) => name.startsWith('min'));
+      // max/maxExclusiveのいずれか
+      const max = entries.find(([name]) => name.startsWith('max'));
+      assert(
+        min && max,
+        'ここまでのチェックでmin/minExclusiveのいずれかとmax/maxExclusiveのいずれかの両方が指定されていることは確定している',
+      );
+      // 以下はTypeScriptの型チェックではエラーにできない
+      // minとmaxでの指定の場合に同じ値でも範囲は存在するが、制約として意味がないので無視する。
+      assert(
+        min[1] < max[1],
+        `${min[0]} must be less than ${max[0]}: ${min[0]}=${min[1]}, ${max[0]}=${max[1]}`,
+      );
+    }
     return;
   }
   assertNever(
