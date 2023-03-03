@@ -1536,7 +1536,6 @@ function makeHelpString(optMap: NormalizedOptionInformationMap): string {
   const optionalList: string[] = [];
   const aloneList: string[] = [];
   for (const [name, info] of Object.entries(optMap)) {
-    assert(typeof info === 'object', 'infoはobjectのはず');
     (info.alone ? aloneList : info.required ? requiredList : optionalList).push(
       `${hyphenate(name)}${info.type === 'boolean' ? '' : ' ' + example(info)}`,
     );
@@ -1576,7 +1575,6 @@ function makeHelpString(optMap: NormalizedOptionInformationMap): string {
   );
   for (const [name, info] of Object.entries(optMap)) {
     const optNames = [name];
-    assert(typeof info === 'object', 'infoはobjectのはず');
     if (info.alias) {
       if (typeof info.alias === 'string') {
         optNames.push(info.alias);
