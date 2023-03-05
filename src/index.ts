@@ -1173,6 +1173,120 @@ function parseStringOption(
   }
 }
 
+/**
+ * 指定した数より大きな最小の数値との差を返す。
+ *
+ * ただし、directionが負の場合は逆に指定した数より小さな最大の数値との差を返す。
+ *
+ * いずれも、絶対値での大小とする。
+ */
+function epsilon(num: number, direction: number): number {
+  // 0の場合は方向に無関係にMIN_VALUE
+  if (num === 0) {
+    return Number.MIN_VALUE;
+  }
+  // 絶対値のlog2をとることで精度を調整
+  const exponent = Math.log2(Math.abs(num) * Number.EPSILON);
+  // -Infinityということはほぼ0と同じ
+  if (exponent === -Infinity) {
+    return Number.MIN_VALUE;
+  }
+  // 指数が整数になるように補正
+  // ただし元々整数、つまりnumが2の乗数だった場合は、
+  // directionが負のとき桁が減るのでもう一つ減らす
+  const adjust = exponent % 1 || (direction < 0 ? 1 : 0);
+  return Math.pow(2, exponent - adjust);
+}
+
+/** 指定した数値を超える最小の数値を返す */
+function getNextLargerNumber(num: number) {
+  return num + epsilon(num, Math.sign(num));
+}
+
+/** 指定した数値を下回る最大の数値を返す */
+function getNextSmallerNumber(num: number) {
+  return num - epsilon(num, -Math.sign(num));
+}
+
+const numberAdjusters: ReadonlyArray<{
+  name: 'min' | 'minExclusive' | 'max' | 'maxExclusive';
+  isInvalid(number: number, constraints: number): boolean;
+  adjust(constraints: number): number;
+  errorMessage: string;
+}> = [
+  {
+    name: 'min',
+    isInvalid: (n, c) => n < c,
+    adjust: c => c,
+    errorMessage: 'greater than or equal to',
+  },
+  {
+    name: 'max',
+    isInvalid: (n, c) => n > c,
+    adjust: c => c,
+    errorMessage: 'less than or equal to',
+  },
+  {
+    name: 'minExclusive',
+    isInvalid: (n, c) => n <= c,
+    adjust: c => getNextLargerNumber(c),
+    errorMessage: 'greater than',
+  },
+  {
+    name: 'maxExclusive',
+    isInvalid: (n, c) => n >= c,
+    adjust: c => getNextSmallerNumber(c),
+    errorMessage: 'less than',
+  },
+] as const;
+
+function adjustNumber(value: string, arg: string, info: NumberOption): number {
+  const number = +value;
+  if (!isFinite(number)) {
+    return usage`${arg} needs a number parameter as the ${example(
+      info,
+    )}: ${value}`;
+  }
+  if (!info.constraints) {
+    // 制約がなければそのまま
+    return number;
+  }
+  // 制約の指定があれば条件を確認
+  if (Array.isArray(info.constraints)) {
+    if (info.constraints.includes(number)) {
+      // 候補の中に一致する値があればそのまま返す。
+      return number;
+    }
+    if (info.autoAdjust) {
+      // 自動調整する場合は候補の中から値との差が最小のものを検索。差が同じ場合は最初に見つかったもの。
+      const min = { value: NaN, diff: Infinity };
+      for (const candidate of info.constraints) {
+        const diff = Math.abs(candidate - number);
+        if (min.diff > diff) {
+          min.diff = diff;
+          min.value = candidate;
+        }
+      }
+      // 候補は長さ1以上の配列なので必ず見つかる
+      return min.value;
+    }
+    return usage`${arg} must be one of ${info.constraints.join(
+      ', ',
+    )}.: ${value}`;
+  }
+  // 最大値、最小値での制約
+  for (const { name, isInvalid, adjust, errorMessage } of numberAdjusters) {
+    const constraints = info.constraints[name];
+    if (constraints === undefined || !isInvalid(number, constraints)) {
+      continue;
+    }
+    return info.autoAdjust
+      ? adjust(constraints)
+      : usage`${arg} must be ${errorMessage} ${constraints}.: ${value}`;
+  }
+  return number;
+}
+
 function parseNumberOption(
   arg: string,
   name: string,
@@ -1188,71 +1302,7 @@ function parseNumberOption(
     // 既に設定済みならエラー
     return usage`Duplicate ${arg}: ${options[name]}, ${r.value}`;
   }
-  const value = (value => {
-    if (!isFinite(value)) {
-      return usage`${arg} needs a number parameter as the ${example(info)}: ${
-        r.value
-      }`;
-    }
-    if (!info.constraints) {
-      return value;
-    }
-    // 制約の指定があれば条件を確認
-    if (Array.isArray(info.constraints)) {
-      if (info.constraints.includes(value)) {
-        // 候補の中に一致する値があればそのまま返す。
-        return value;
-      }
-      if (info.autoAdjust) {
-        // 候補の中から値との差が最小のものを検索。差が同じ場合は最初に見つかったもの。
-        const min = { value: NaN, diff: Infinity };
-        for (const candidate of info.constraints) {
-          const diff = Math.abs(candidate - value);
-          if (min.diff > diff) {
-            min.diff = diff;
-            min.value = candidate;
-          }
-        }
-        // 候補は長さ1以上の配列なので必ず見つかる
-        return min.value;
-      }
-      return usage`${arg} must be one of ${info.constraints.join(', ')}.: ${
-        r.value
-      }`;
-    }
-    // 最大値、最小値での制約
-    if (info.constraints.min !== undefined && value < info.constraints.min) {
-      if (info.autoAdjust) {
-        return info.constraints.min;
-      }
-      return usage`${arg} must be greater than or equal to ${info.constraints.min}.: ${r.value}`;
-    }
-    if (
-      info.constraints.minExclusive !== undefined &&
-      value <= info.constraints.minExclusive
-    ) {
-      if (info.autoAdjust) {
-        return info.constraints.minExclusive + Number.EPSILON;
-      }
-      return usage`${arg} must be greater than ${info.constraints.minExclusive}.: ${r.value}`;
-    }
-    if (info.constraints.max !== undefined && value > info.constraints.max) {
-      if (info.autoAdjust) {
-        return info.constraints.max;
-      }
-      return usage`${arg} must be less than or equal to ${info.constraints.max}.: ${r.value}`;
-    }
-    if (
-      info.constraints.maxExclusive !== undefined &&
-      value >= info.constraints.maxExclusive
-    ) {
-      if (info.autoAdjust) {
-        return info.constraints.maxExclusive - Number.EPSILON;
-      }
-      return usage`${arg} must be less than ${info.constraints.maxExclusive}.: ${r.value}`;
-    }
-    return value;
-  })(+r.value);
+  const value = adjustNumber(r.value, arg, info);
   if (info.multiple) {
     // 複数指定可能な場合は配列に格納
     ((options[name] ??= []) as number[]).push(value);
