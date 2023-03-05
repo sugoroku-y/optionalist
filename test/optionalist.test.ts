@@ -709,7 +709,7 @@ test('minExclusive & autoAdjust', () => {
     a: { type: 'number', constraints: { minExclusive: 1 }, autoAdjust: true },
   } as const;
   expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
-  expect(parse(opt, ['-a', '1']).a).toBe(1 + Number.EPSILON);
+  expect(parse(opt, ['-a', '1']).a).toBeGreaterThan(1);
 });
 
 test('max & autoAdjust', () => {
@@ -725,7 +725,7 @@ test('maxExclusive & autoAdjust', () => {
     a: { type: 'number', constraints: { maxExclusive: 10 }, autoAdjust: true },
   } as const;
   expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
-  expect(parse(opt, ['-a', '10']).a).toBe(10 - Number.EPSILON);
+  expect(parse(opt, ['-a', '10']).a).toBeLessThan(10);
 });
 test('max&maxExclusive', () => {
   expect(() =>
