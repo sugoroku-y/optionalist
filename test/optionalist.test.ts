@@ -1543,3 +1543,121 @@ describe('invalid name', () => {
     ).toThrow();
   });
 });
+
+/**
+ * 2のexponent乗の近傍の数値を取得する。
+ *
+ * @param exponent 乗数
+ * @param sign 負号
+ * @param direction 近傍の方向。絶対値が大きくなる方向であれば正を指定する。
+ * @returns 取得した近傍の数値。
+ */
+function neighborhood(
+  exponent: number,
+  sign: 1 | -1,
+  direction: 1 | -1,
+): number {
+  const power = Math.pow(2, exponent);
+  const neighbor = (power + Math.pow(2, exponent - 52) * direction) * sign;
+  if (power === neighbor) {
+    throw new Error(`expected neighborhood, but same number ${power}`);
+  }
+  return neighbor;
+}
+
+describe.each`
+  constraint
+  ${'minExclusive'}
+  ${'maxExclusive'}
+`(
+  'autoAdjust $constraint',
+  ({ constraint }: { constraint: 'minExclusive' | 'maxExclusive' }) => {
+    test.each`
+      number
+      ${0}
+      ${1}
+      ${-1}
+      ${0.1}
+      ${-0.1}
+      ${5.25}
+      ${-5.25
+// eslint-disable-next-line prettier/prettier
+//
+      }
+      Math.log2で丸めが発生するため、2の乗数近傍の値でテスト
+      ${neighborhood(50, 1, 1)}
+      ${neighborhood(50, -1, 1)}
+      ${neighborhood(50, 1, -1)}
+      ${neighborhood(50, -1, -1)}
+      ${neighborhood(100, 1, 1)}
+      ${neighborhood(100, -1, 1)}
+      ${neighborhood(100, 1, -1)}
+      ${neighborhood(100, -1, -1)}
+      ${neighborhood(200, 1, 1)}
+      ${neighborhood(200, -1, 1)}
+      ${neighborhood(200, 1, -1)}
+      ${neighborhood(200, -1, -1)}
+      ${neighborhood(300, 1, 1)}
+      ${neighborhood(300, -1, 1)}
+      ${neighborhood(300, 1, -1)}
+      ${neighborhood(300, -1, -1)
+// eslint-disable-next-line prettier/prettier
+//
+      }
+      Numberに用意されている定数でも正負それぞれチェック
+      ${Number.MIN_VALUE}
+      ${-Number.MIN_VALUE}
+      ${Number.MAX_VALUE}
+      ${-Number.MAX_VALUE}
+      ${Number.MIN_SAFE_INTEGER}
+      ${Number.MAX_SAFE_INTEGER}
+      ${Number.EPSILON}
+      ${-Number.EPSILON}
+    `('$number', ({ number }: { number: number }) => {
+      const map = {
+        a: {
+          type: 'number',
+          constraints: { [constraint]: number } as
+            | { minExclusive: number }
+            | { maxExclusive: number },
+          autoAdjust: true,
+          required: true,
+        },
+      } as const;
+      const next = parse(map, ['-a', String(number)]).a;
+      if (constraint === 'minExclusive') {
+        expect(next).toBeGreaterThan(number);
+      } else {
+        expect(next).toBeLessThan(number);
+      }
+      expect(number + (next - number) / 2).toEqual(
+        new OneOfThem([number, next]),
+      );
+    });
+  },
+);
+
+import { AsymmetricMatcher } from 'expect/build/asymmetricMatchers';
+
+class OneOfThem<T> extends AsymmetricMatcher<readonly T[]> {
+  constructor(them: readonly [T, T, ...T[]]) {
+    if (them.length < 2) {
+      throw new TypeError(`oneOfThem() expects the array of 2 or more length.`);
+    }
+    super(them);
+  }
+  asymmetricMatch(other: T) {
+    return this.sample.some(e => e === other);
+  }
+  toString() {
+    return `OneOfThem ${this.sample.join(', ')}`;
+  }
+  getExpectedType() {
+    return typeof this.sample[0];
+  }
+  toAsymmetricMatcher(): string {
+    return `One of ${this.sample.slice(0, -1).join(', ')} or ${this.sample.at(
+      -1,
+    )}`;
+  }
+}

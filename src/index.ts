@@ -1173,6 +1173,11 @@ function parseStringOption(
   }
 }
 
+/** 最小指数 */
+const MIN_EXPONENT = Math.log2(Number.MIN_VALUE);
+/** Number.EPSILONの指数 */
+const EPSILON_EXPONENT = Math.log2(Number.EPSILON);
+
 /**
  * 指定した数より大きな最小の数値との差を返す。
  *
@@ -1185,17 +1190,26 @@ function epsilon(num: number, direction: number): number {
   if (num === 0) {
     return Number.MIN_VALUE;
   }
+  const abs = Math.abs(num);
   // 絶対値のlog2をとることで精度を調整
-  const exponent = Math.log2(Math.abs(num) * Number.EPSILON);
-  // -Infinityということはほぼ0と同じ
-  if (exponent === -Infinity) {
+  const exponent = Math.log2(abs);
+  // MIN_EXPONENTより小さいということはMIN_VALUEを返すしかない
+  if (EPSILON_EXPONENT + exponent < MIN_EXPONENT) {
     return Number.MIN_VALUE;
   }
+  let pow;
   // 指数が整数になるように補正
-  // ただし元々整数、つまりnumが2の乗数だった場合は、
-  // directionが負のとき桁が減るのでもう一つ減らす
-  const adjust = exponent % 1 || (direction < 0 ? 1 : 0);
-  return Math.pow(2, exponent - adjust);
+  const adjust = !Number.isInteger(exponent)
+    ? Math.floor(exponent)
+    : // numが2の乗数に近くなるとlog2の結果が丸められることがあるので補正
+    abs < (pow = Math.pow(2, exponent)) ||
+      // 丸められて整数になっただけで本来はちょっと越えているなら切り捨てるだけなのでそのまま。↓の補正は行わない
+      (abs === pow &&
+        // 元々整数、つまりabsが2の乗数ぴったりで、directionが負だと最上位ビットが下がるので、この場合も一つ減らす
+        direction < 0)
+    ? exponent - 1
+    : exponent;
+  return Math.pow(2, EPSILON_EXPONENT + adjust);
 }
 
 /** 指定した数値を超える最小の数値を返す */
