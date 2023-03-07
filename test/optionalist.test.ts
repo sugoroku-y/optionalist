@@ -3,6 +3,7 @@ import 'jest-to-exit-process';
 import 'jest-to-equal-type';
 import { parse, unnamed, helpString, DescribedType } from '../src';
 import { name as packageName, version } from './package.json';
+import './OneOf';
 
 const OPTMAP = {
   [helpString]: {
@@ -1630,34 +1631,7 @@ describe.each`
       } else {
         expect(next).toBeLessThan(number);
       }
-      expect(number + (next - number) / 2).toEqual(
-        new OneOfThem([number, next]),
-      );
+      expect(number + (next - number) / 2).toEqual(expect.oneOf(number, next));
     });
   },
 );
-
-import { AsymmetricMatcher } from 'expect/build/asymmetricMatchers';
-
-class OneOfThem<T> extends AsymmetricMatcher<readonly T[]> {
-  constructor(them: readonly [T, T, ...T[]]) {
-    if (them.length < 2) {
-      throw new TypeError(`oneOfThem() expects the array of 2 or more length.`);
-    }
-    super(them);
-  }
-  asymmetricMatch(other: T) {
-    return this.sample.some(e => e === other);
-  }
-  toString() {
-    return `OneOfThem ${this.sample.join(', ')}`;
-  }
-  getExpectedType() {
-    return typeof this.sample[0];
-  }
-  toAsymmetricMatcher(): string {
-    return `One of ${this.sample.slice(0, -1).join(', ')} or ${this.sample.at(
-      -1,
-    )}`;
-  }
-}
