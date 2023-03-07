@@ -1596,6 +1596,9 @@ describe.each`
       ${'-Number.EPSILON'}
     `('$expression', ({ expression }: { expression: string }) => {
       const number = eval(expression) as number;
+      // 念のため型チェック
+      expect(number).toEqual(expect.any(Number));
+      // 指定の値を含まない上限/下限を指定したコマンドラインオプション情報
       const map = {
         a: {
           type: 'number',
@@ -1603,16 +1606,21 @@ describe.each`
             | { minExclusive: number }
             | { maxExclusive: number },
           autoAdjust: true,
+          // requiredを指定しているのでオプショナルにならない
           required: true,
         },
       } as const;
       const next = parse(map, ['-a', String(number)]).a;
+      // 制約通りnumberより大きい/小さい数値になっているかどうか確認
       if (constraint === 'minExclusive') {
         expect(next).toBeGreaterThan(number);
       } else {
         expect(next).toBeLessThan(number);
       }
-      expect(number + (next - number) / 2).toEqual(expect.oneOf(number, next));
+      // numberとnextの中間値
+      const medium = number + (next - number) / 2;
+      // 中間値を計算してもnumberかnextのいずれかに丸められているか確認
+      expect(medium).toEqual(expect.oneOf(number, next));
     });
   },
 );
