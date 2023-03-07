@@ -1545,27 +1545,6 @@ describe('invalid name', () => {
   });
 });
 
-/**
- * 2のexponent乗の近傍の数値を取得する。
- *
- * @param exponent 乗数
- * @param sign 負号
- * @param direction 近傍の方向。絶対値が大きくなる方向であれば正を指定する。
- * @returns 取得した近傍の数値。
- */
-function neighborhood(
-  exponent: number,
-  sign: 1 | -1,
-  direction: 1 | -1,
-): number {
-  const power = Math.pow(2, exponent);
-  const neighbor = (power + Math.pow(2, exponent - 52) * direction) * sign;
-  if (power === neighbor) {
-    throw new Error(`expected neighborhood, but same number ${power}`);
-  }
-  return neighbor;
-}
-
 describe.each`
   constraint
   ${'minExclusive'}
@@ -1581,32 +1560,33 @@ describe.each`
       ${0.1}
       ${-0.1}
       ${5.25}
-      ${-5.25
-// eslint-disable-next-line prettier/prettier
-//
-      }
+      ${-5.25}
+      ${/*
       Math.log2で丸めが発生するため、2の乗数近傍の値でテスト
-      ${neighborhood(50, 1, 1)}
-      ${neighborhood(50, -1, 1)}
-      ${neighborhood(50, 1, -1)}
-      ${neighborhood(50, -1, -1)}
-      ${neighborhood(100, 1, 1)}
-      ${neighborhood(100, -1, 1)}
-      ${neighborhood(100, 1, -1)}
-      ${neighborhood(100, -1, -1)}
-      ${neighborhood(200, 1, 1)}
-      ${neighborhood(200, -1, 1)}
-      ${neighborhood(200, 1, -1)}
-      ${neighborhood(200, -1, -1)}
-      ${neighborhood(300, 1, 1)}
-      ${neighborhood(300, -1, 1)}
-      ${neighborhood(300, 1, -1)}
-      ${neighborhood(300, -1, -1)
-// eslint-disable-next-line prettier/prettier
-//
-      }
+     */ Math.pow(2, 50) * (1 + 3 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 + 2 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 + 1 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 + 0 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 - 0.5 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 - 1 * Number.EPSILON)}
+      ${Math.pow(2, 50) * (1 - 1.5 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 + 3 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 + 2 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 + 1 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 + 0 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 - 0.5 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 - 1 * Number.EPSILON)}
+      ${Math.pow(2, 100) * (1 - 1.5 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 + 3 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 + 2 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 + 1 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 + 0 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 - 0.5 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 - 1 * Number.EPSILON)}
+      ${Math.pow(2, 300) * (1 - 1.5 * Number.EPSILON)}
+      ${/*
       Numberに用意されている定数でも正負それぞれチェック
-      ${Number.MIN_VALUE}
+     */ Number.MIN_VALUE}
       ${-Number.MIN_VALUE}
       ${Number.MAX_VALUE}
       ${-Number.MAX_VALUE}
