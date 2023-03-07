@@ -1553,48 +1553,49 @@ describe.each`
   'autoAdjust $constraint',
   ({ constraint }: { constraint: 'minExclusive' | 'maxExclusive' }) => {
     test.each`
-      number
-      ${0}
-      ${1}
-      ${-1}
-      ${0.1}
-      ${-0.1}
-      ${5.25}
-      ${-5.25}
+      expression
+      ${'0'}
+      ${'1'}
+      ${'-1'}
+      ${'0.1'}
+      ${'-0.1'}
+      ${'5.25'}
+      ${'-5.25'}
       ${/*
       Math.log2で丸めが発生するため、2の乗数近傍の値でテスト
-     */ Math.pow(2, 50) * (1 + 3 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 + 2 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 + 1 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 + 0 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 - 0.5 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 - 1 * Number.EPSILON)}
-      ${Math.pow(2, 50) * (1 - 1.5 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 + 3 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 + 2 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 + 1 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 + 0 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 - 0.5 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 - 1 * Number.EPSILON)}
-      ${Math.pow(2, 100) * (1 - 1.5 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 + 3 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 + 2 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 + 1 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 + 0 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 - 0.5 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 - 1 * Number.EPSILON)}
-      ${Math.pow(2, 300) * (1 - 1.5 * Number.EPSILON)}
+     */ 'Math.pow(2, 50) * (1 + 3 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 + 2 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 + 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 + 0 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 - 0.5 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 - 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 50) * (1 - 1.5 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 + 3 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 + 2 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 + 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 + 0 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 - 0.5 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 - 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 100) * (1 - 1.5 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 + 3 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 + 2 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 + 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 + 0 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 - 0.5 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 - 1 * Number.EPSILON)'}
+      ${'Math.pow(2, 300) * (1 - 1.5 * Number.EPSILON)'}
       ${/*
       Numberに用意されている定数でも正負それぞれチェック
-     */ Number.MIN_VALUE}
-      ${-Number.MIN_VALUE}
-      ${Number.MAX_VALUE}
-      ${-Number.MAX_VALUE}
-      ${Number.MIN_SAFE_INTEGER}
-      ${Number.MAX_SAFE_INTEGER}
-      ${Number.EPSILON}
-      ${-Number.EPSILON}
-    `('$number', ({ number }: { number: number }) => {
+     */ 'Number.MIN_VALUE'}
+      ${'-Number.MIN_VALUE'}
+      ${'Number.MAX_VALUE'}
+      ${'-Number.MAX_VALUE'}
+      ${'Number.MIN_SAFE_INTEGER'}
+      ${'Number.MAX_SAFE_INTEGER'}
+      ${'Number.EPSILON'}
+      ${'-Number.EPSILON'}
+    `('$expression', ({ expression }: { expression: string }) => {
+      const number = eval(expression) as number;
       const map = {
         a: {
           type: 'number',
