@@ -1,18 +1,18 @@
-import { AsymmetricMatcher } from 'expect/build/asymmetricMatchers';
+import { AsymmetricMatcher } from 'expect';
+import { equals } from '@jest/expect-utils';
 
 export class OneOf<T> extends AsymmetricMatcher<readonly T[]> {
-  constructor(them: readonly [T, T, ...T[]], inverse?: true) {
-    if (them.length < 2) {
+  constructor(sample: readonly [T, T, ...T[]], inverse = false) {
+    if (sample.length < 2) {
       throw new TypeError(`oneOf() expects the array of 2 or more length.`);
     }
-    super(them);
-    this.inverse = inverse;
+    super(sample, inverse);
   }
   asymmetricMatch(other: T) {
-    return this.sample.some(e => e === other);
+    return !this.inverse === this.sample.some(e => equals(e, other));
   }
   toString() {
-    return `${this.inverse ? 'No' : 'O'}neOfThem ${this.sample.join(', ')}`;
+    return `${this.inverse ? 'not.' : ''}OneOf ${this.sample.join(', ')}`;
   }
   getExpectedType() {
     return typeof this.sample[0];
@@ -20,7 +20,8 @@ export class OneOf<T> extends AsymmetricMatcher<readonly T[]> {
   toAsymmetricMatcher(): string {
     return `${this.inverse ? 'No' : 'O'}ne of ${this.sample
       .slice(0, -1)
-      .join(', ')} or ${this.sample.at(-1)}`;
+      .map(e => JSON.stringify(e))
+      .join(', ')} or ${JSON.stringify(this.sample.at(-1))}`;
   }
 }
 
@@ -31,10 +32,12 @@ declare global {
   namespace jest {
     interface Expect {
       oneOf<T>(...them: [T, T, ...T[]]): unknown;
-      noneOf<T>(...them: [T, T, ...T[]]): unknown;
+    }
+    interface InverseAsymmetricMatchers {
+      oneOf<T>(...them: [T, T, ...T[]]): unknown;
     }
   }
 }
 
-expect.oneOf = <T>(...them: [T, T, ...T[]]) => new OneOf(them);
-expect.noneOf = <T>(...them: [T, T, ...T[]]) => new OneOf(them, true);
+expect.oneOf = <T>(...sample: [T, T, ...T[]]) => new OneOf(sample);
+expect.not.oneOf = <T>(...sample: [T, T, ...T[]]) => new OneOf(sample, true);
