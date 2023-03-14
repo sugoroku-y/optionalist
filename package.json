@@ -6,7 +6,7 @@
   "scripts": {
     "lint:eslint": "eslint ./",
     "lint:prettier": "prettier --check ./",
-    "lint": "run-s lint:*",
+    "lint": "run-p lint:*",
     "prebuild": "npm run lint",
     "build": "tsc --build src/tsconfig.json",
     "pretest": "npm run build",
