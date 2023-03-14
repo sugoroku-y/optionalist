@@ -4,9 +4,12 @@
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:jest/recommended",
+        "plugin:jest/style",
         "prettier"
     ],
     "plugins": [
+        "jest",
         "@typescript-eslint"
     ],
     "parser": "@typescript-eslint/parser",
@@ -17,11 +20,14 @@
         ]
     },
     "env": {
-        "es6": true,
+        "jest/globals": true,
+        "es2021": true,
         "node": true
     },
     "rules": {
-        // テンプレートリテラルでundefinedやunknownを使えるように
+        "jest/consistent-test-it": ["error", { "fn": "test" }],
+        "jest/require-top-level-describe": ["error"],
+            // テンプレートリテラルでundefinedやunknownを使えるように
         "@typescript-eslint/restrict-template-expressions": "off",
         // _で始まる変数/引数等は対象外
         "@typescript-eslint/no-unused-vars": [
