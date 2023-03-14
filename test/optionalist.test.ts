@@ -5,397 +5,121 @@ import { parse, unnamed, helpString, DescribedType } from '../src';
 import { name as packageName, version } from './package.json';
 import './OneOf';
 
-const OPTMAP = {
-  [helpString]: {
-    describe: `
+describe('optionalist parsing', () => {
+  const OPTMAP = {
+    [helpString]: {
+      describe: `
     UnitTest for optionalist.
       test for indent
     `,
-  },
-  alpha: {},
-  bravo: {
-    type: 'number',
-    default: 1,
-    describe: 'b value',
-    example: 'b-value',
-    alias: 'b',
-  },
-  charlie: {
-    type: 'boolean',
-    alone: true,
-    alias: ['charr', 'c'],
-    describe: `
-    `,
-  },
-  delta: {
-    required: true,
-  },
-  echo: {
-    alone: true,
-  },
-  foxtrot: {
-    default: 'racoondog',
-  },
-  golf: {
-    constraints: ['volkswagen', 'sports'],
-  },
-  hotel: {
-    type: 'number',
-    constraints: [1234, 5678, 9012],
-  },
-  india: {
-    type: 'number',
-    constraints: {
-      min: 1000,
-      max: 9999,
     },
-  },
-  GOLF: {
-    constraints: ['volkswagen', 'sports'],
-    ignoreCase: true,
-  },
-  [unnamed]: {
-    example: 'argument',
-    describe: 'arguments for command',
-  },
-} as const;
-
-test('optionalist normal', () => {
-  const options = parse(OPTMAP, ['--delta', 'test']);
-  expect(options).toEqual({
-    delta: 'test',
-    bravo: 1,
-    foxtrot: 'racoondog',
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist normal', () => {
-  const options = parse(OPTMAP, ['--alpha', 'bet', '--delta', 'test']);
-  expect(options).toEqual({
-    alpha: 'bet',
-    delta: 'test',
-    foxtrot: 'racoondog',
-    bravo: 1,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist normal', () => {
-  const options = parse(OPTMAP, [
-    '--alpha',
-    'bet',
-    '--bravo',
-    '2',
-    '--delta',
-    'test',
-  ]);
-  expect(options).toEqual({
-    alpha: 'bet',
-    delta: 'test',
-    foxtrot: 'racoondog',
-    bravo: 2,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist alone', () => {
-  const options = parse(OPTMAP, ['--charlie']);
-  expect(options).toEqual({ charlie: true });
-  expect(options[unnamed]).toBeUndefined();
-});
-test('optionalist alone', () => {
-  const options = parse(OPTMAP, ['--echo', 'string']);
-  expect(options).toEqual({
-    echo: 'string',
-  });
-  expect(options[unnamed]).toBeUndefined();
-});
-test('optionalist unnamed', () => {
-  const options = parse(OPTMAP, ['--delta', 'test', 'aaa', 'bbb', 'ccc']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'test',
-    foxtrot: 'racoondog',
-  });
-  expect(options[unnamed]).toEqual(['aaa', 'bbb', 'ccc']);
-});
-test('optionalist unnamed', () => {
-  const options = parse(OPTMAP, [
-    '--delta',
-    'test',
-    '--',
-    '--aaa',
-    '-bbb',
-    '-ccc',
-  ]);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'test',
-    foxtrot: 'racoondog',
-  });
-  expect(options[unnamed]).toEqual(['--aaa', '-bbb', '-ccc']);
-});
-test('optionalist string default optMap', () => {
-  expect(parse({ aaa: { default: 'aaa' } }, []).aaa).toBe('aaa');
-});
-test('optionalist number default optMap', () => {
-  expect(parse({ aaa: { type: 'number', default: 123 } }, []).aaa).toBe(123);
-});
-test('optionalist string default literal', () => {
-  expect(parse({ aaa: 'aaa' }, []).aaa).toBe('aaa');
-});
-test('optionalist number default literal', () => {
-  expect(parse({ aaa: 123 }, []).aaa).toBe(123);
-});
-test('optionalist string default optMap falsy', () => {
-  expect(parse({ aaa: { default: '' } }, []).aaa).toBe('');
-});
-test('optionalist number default optMap falsy', () => {
-  expect(parse({ aaa: { type: 'number', default: 0 } }, []).aaa).toBe(0);
-});
-test('optionalist string default literal falsy', () => {
-  expect(parse({ aaa: '' }, []).aaa).toBe('');
-});
-test('optionalist number default literal falsy', () => {
-  expect(parse({ aaa: 0 }, []).aaa).toBe(0);
-});
-test('optionalist string constraints', () => {
-  const options = parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--golf',
-    'volkswagen',
-  ]);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    golf: 'volkswagen',
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist string constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--golf', 'sports']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    golf: 'sports',
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist string constraints', () => {
-  const options = parse(OPTMAP, [
-    '--delta',
-    'required',
-    '--GOLF',
-    'VOLKSWAGEN',
-  ]);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    GOLF: 'volkswagen',
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist string constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--GOLF', 'SPORTS']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    GOLF: 'sports',
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist number constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '1234']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    hotel: 1234,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist number constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '5678']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    hotel: 5678,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist number constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--hotel', '9012']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    hotel: 9012,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist number range constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--india', '1000']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    india: 1000,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist number range constraints', () => {
-  const options = parse(OPTMAP, ['--delta', 'required', '--india', '9999']);
-  expect(options).toEqual({
-    bravo: 1,
-    delta: 'required',
-    foxtrot: 'racoondog',
-    india: 9999,
-  });
-  expect(options[unnamed]).toEqual([]);
-});
-test('optionalist boolean multiple: no constraints', () => {
-  const opt = { aaa: { type: 'boolean', multiple: true } } as const;
-  for (let count = 0; count < 1000; ++count) {
-    expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
-  }
-});
-test('optionalist boolean multiple: constraints.max: 2', () => {
-  const opt = {
-    aaa: { type: 'boolean', multiple: true, constraints: { max: 2 } },
+    alpha: {},
+    bravo: {
+      type: 'number',
+      default: 1,
+      describe: 'b value',
+      example: 'b-value',
+      alias: 'b',
+    },
+    charlie: {
+      type: 'boolean',
+      alone: true,
+      alias: ['charr', 'c'],
+      describe: `
+    `,
+    },
+    delta: {
+      required: true,
+    },
+    echo: {
+      alone: true,
+    },
+    foxtrot: {
+      default: 'racoondog',
+    },
+    golf: {
+      constraints: ['volkswagen', 'sports'],
+    },
+    hotel: {
+      type: 'number',
+      constraints: [1234, 5678, 9012],
+    },
+    india: {
+      type: 'number',
+      constraints: {
+        min: 1000,
+        max: 9999,
+      },
+    },
+    GOLF: {
+      constraints: ['volkswagen', 'sports'],
+      ignoreCase: true,
+    },
+    [unnamed]: {
+      example: 'argument',
+      describe: 'arguments for command',
+    },
   } as const;
-  for (let count = 0; count <= opt.aaa.constraints.max; ++count) {
-    expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
-  }
-  expect(() =>
-    parse(opt, Array(opt.aaa.constraints.max + 1).fill('--aaa')),
-  ).toThrow('Exceeded max count(2): --aaa');
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, [])).toThrow('--delta required');
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--unknown'])).toThrow(
-    'unknown options: --unknown',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--alpha'])).toThrow('--alpha needs a parameter');
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--bravo'])).toThrow(
-    '--bravo needs a number parameter as the b-value',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--bravo', 'abc'])).toThrow(
-    '--bravo needs a number parameter as the b-value: abc',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--bravo', 'abc', '--charlie'])).toThrow(
-    '--bravo needs a number parameter as the b-value: abc',
-  );
-});
-test('optionalist usage error x', () => {
-  expect(() => parse(OPTMAP, ['--charlie', '111'])).toThrow(
-    '--charlie must be specified alone.',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--charlie', '--', '-111'])).toThrow(
-    '--charlie must be specified alone.',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--alpha', 'beta', '--charlie'])).toThrow(
-    '--charlie must be specified alone.',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    parse(OPTMAP, ['--delta', 'required', '--golf', 'german']),
-  ).toThrow('--golf must be one of volkswagen, sports');
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    parse(OPTMAP, ['--delta', 'required', '--golf', 'SPORTS']),
-  ).toThrow('--golf must be one of volkswagen, sports');
-});
-test('optionalist usage error', () => {
-  expect(() => parse(OPTMAP, ['--delta', 'required', '--hotel', '0'])).toThrow(
-    '--hotel must be one of 1234, 5678, 9012.',
-  );
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    parse(OPTMAP, ['--delta', 'required', '--india', '999']),
-  ).toThrow('--india must be greater than or equal to 1000.');
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    parse(OPTMAP, ['--delta', 'required', '--india', '10000']),
-  ).toThrow('--india must be less than or equal to 9999.');
-});
-test('optionalist usage error', () => {
-  expect(() => parse({ [unnamed]: { min: 2, max: 3 } }, ['111'])).toThrow(
-    'At least 2 unnamed_parameters required.',
-  );
-  expect(() =>
-    parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, ['111']),
-  ).toThrow('At least 2 ppp required.');
-});
-test('optionalist usage error', () => {
-  expect(() =>
-    parse({ [unnamed]: { min: 2, max: 3 } }, ['111', '222', '333', '444']),
-  ).toThrow('Too many unnamed_parameters specified(up to 3).');
-  expect(() =>
-    parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, [
-      '111',
-      '222',
-      '333',
-      '444',
-    ]),
-  ).toThrow('Too many ppp specified(up to 3).');
-});
 
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    parse({ a: { default: 1 } }, ['-a', '2']),
-  ).toThrow();
-});
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
-  ).toThrow();
-});
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
-  ).toThrow();
-});
-test('optionalist invalid optMap', () => {
-  expect(() =>
-    parse(
-      // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-      { a: { type: 'number', default: '1' } },
-      ['-a', '2'],
-    ),
-  ).toThrow();
-});
-test('optionalist invalid optMap: type: unknown', () => {
-  // @ts-expect-error 例外を発生させるためエラーになるtypeを指定
-  expect(() => parse({ a: { type: 'unknown' } })).toThrow();
-});
-test('optionalist helpstring', () => {
-  expect(parse(OPTMAP, ['--charlie'])[helpString])
-    .toBe(`Version: ${packageName} ${version}
+  test.each`
+    commandLine                                 | namedExpected                                                                | unnamedExpected
+    ${'--delta required'}                       | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog' }}                     | ${[]}
+    ${'--alpha bet --delta required'}           | ${{ alpha: 'bet', bravo: 1, delta: 'required', foxtrot: 'racoondog' }}       | ${[]}
+    ${'--alpha bet --bravo 2 --delta required'} | ${{ alpha: 'bet', bravo: 2, delta: 'required', foxtrot: 'racoondog' }}       | ${[]}
+    ${'--charlie'}                              | ${{ charlie: true }}                                                         | ${undefined}
+    ${'--echo string'}                          | ${{ echo: 'string' }}                                                        | ${undefined}
+    ${'--delta required aaa bbb ccc'}           | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog' }}                     | ${['aaa', 'bbb', 'ccc']}
+    ${'--delta required -- --aaa -bbb -ccc'}    | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog' }}                     | ${['--aaa', '-bbb', '-ccc']}
+    ${'--delta required --golf volkswagen'}     | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', golf: 'volkswagen' }} | ${[]}
+    ${'--delta required --golf sports'}         | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', golf: 'sports' }}     | ${[]}
+    ${'--delta required --GOLF VOLKSWAGEN'}     | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', GOLF: 'volkswagen' }} | ${[]}
+    ${'--delta required --GOLF SPORTS'}         | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', GOLF: 'sports' }}     | ${[]}
+    ${'--delta required --hotel 1234'}          | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', hotel: 1234 }}        | ${[]}
+    ${'--delta required --hotel 5678'}          | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', hotel: 5678 }}        | ${[]}
+    ${'--delta required --hotel 9012'}          | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', hotel: 9012 }}        | ${[]}
+    ${'--delta required --india 1000'}          | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', india: 1000 }}        | ${[]}
+    ${'--delta required --india 9999'}          | ${{ bravo: 1, delta: 'required', foxtrot: 'racoondog', india: 9999 }}        | ${[]}
+  `(
+    'success: $commandLine',
+    ({
+      commandLine,
+      namedExpected,
+      unnamedExpected,
+    }: {
+      commandLine: string;
+      namedExpected: Record<string, unknown>;
+      unnamedExpected: string[] | undefined;
+    }) => {
+      const options = parse(OPTMAP, commandLine.split(' '));
+      expect(options).toEqual(namedExpected);
+      expect(options[unnamed]).toEqual(unnamedExpected);
+    },
+  );
+  test.each`
+    commandLine                         | usage
+    ${''}                               | ${'--delta required'}
+    ${'--unknown'}                      | ${'unknown options: --unknown'}
+    ${'--alpha'}                        | ${'--alpha needs a parameter'}
+    ${'--bravo'}                        | ${'--bravo needs a number parameter as the b-value'}
+    ${'--bravo abc'}                    | ${'--bravo needs a number parameter as the b-value: abc'}
+    ${'--bravo abc --charlie'}          | ${'--bravo needs a number parameter as the b-value: abc'}
+    ${'--charlie 111'}                  | ${'--charlie must be specified alone.'}
+    ${'--charlie -- -111'}              | ${'--charlie must be specified alone.'}
+    ${'--alpha beta --charlie'}         | ${'--charlie must be specified alone.'}
+    ${'--delta required --golf german'} | ${'--golf must be one of volkswagen, sports'}
+    ${'--delta required --golf SPORTS'} | ${'--golf must be one of volkswagen, sports'}
+    ${'--delta required --hotel 0'}     | ${'--hotel must be one of 1234, 5678, 9012.'}
+    ${'--delta required --india 999'}   | ${'--india must be greater than or equal to 1000.'}
+    ${'--delta required --india 10000'} | ${'--india must be less than or equal to 9999.'}
+  `(
+    'failure: $commandLine',
+    ({ commandLine, usage }: { commandLine: string; usage: string }) => {
+      expect(() => parse(OPTMAP, commandLine.split(' '))).toThrow(usage);
+    },
+  );
+  test('helpstring', () => {
+    expect(parse(OPTMAP, ['--charlie'])[helpString])
+      .toBe(`Version: ${packageName} ${version}
 Usage:
   node ${packageName} --delta parameter [--alpha parameter] [--bravo b-value] [--foxtrot parameter] [--golf parameter] [--hotel parameter] [--india parameter] [--GOLF parameter] [--] [argument...]
   node ${packageName} --charlie
@@ -420,333 +144,144 @@ Options:
   [--] [argument...]
     arguments for command
 `);
-});
-test('process.argv', () => {
-  let saved;
-  [saved, process.argv] = [process.argv, ['abc', 'def', 'ghi']];
-  try {
-    const x = parse({ a: {}, b: {}, c: {} });
-    expect(x[unnamed]).toEqual(['ghi']);
-  } finally {
-    process.argv = saved;
-  }
-});
-test('never', () => {
-  expect(() =>
-    // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
-    parse({ a: { type: 'unknown', default: 1 } }, []),
-  ).toThrow();
-});
-
-/**
- * procを実行中に、streamへ出力された内容を文字列として返す。
- *
- * procが非同期の場合は、非同期で返す。
- *
- * @param {NodeJS.WriteStream} stream
- * @param {() => Promise<unknown>} proc
- * @returns {Promise<string>}
- */
-function stream(
-  stream: NodeJS.WriteStream,
-  proc: () => Promise<unknown>,
-): Promise<string>;
-/**
- * procを実行中に、streamへ出力された内容を文字列として返す。
- *
- * procが非同期の場合は、非同期で返す。
- *
- * @param {NodeJS.WriteStream} stream
- * @param {() => Promise<unknown>} proc
- * @returns {Promise<string>}
- */
-function stream(stream: NodeJS.WriteStream, proc: () => unknown): string;
-// 実装
-function stream(
-  stream: NodeJS.WriteStream,
-  proc: () => unknown,
-): string | Promise<string> {
-  // 出力バッファ
-  let buffer = Buffer.of();
-  // モック
-  const mock = jest.spyOn(stream, 'write').mockImplementation(str => {
-    // 書き込みをバッファに溜めていく
-    buffer = Buffer.concat([buffer, Buffer.from(str)]);
-    return true;
-  });
-  // モックを元に戻すかどうか
-  let restorable = true;
-  try {
-    const result = proc();
-    if (result instanceof Promise) {
-      // 非同期実行するためにこの関数内ではモックを元に戻さない
-      restorable = false;
-      return (async () => {
-        try {
-          await result;
-          // バッファの内容を返す
-          return buffer.toString('utf8');
-        } finally {
-          // こちらでは問答無用で元に戻す
-          mock.mockRestore();
-        }
-      })();
-    }
-    // バッファの内容を返す
-    return buffer.toString('utf8');
-  } finally {
-    // 非同期実行を開始する場合は元に戻さない
-    if (restorable) {
-      mock.mockRestore();
-    }
-  }
-}
-
-test('showUsageOnError', () => {
-  expect(
-    stream(process.stderr, () => {
-      expect(() => {
-        parse(
-          {
-            [helpString]: {
-              showUsageOnError: true,
-            },
-            aaa: {
-              describe: 'test',
-              required: true,
-            },
-            [unnamed]: {
-              min: 0,
-              max: Infinity,
-            },
-          },
-          [],
-        );
-      }).toExitProcess(1);
-    }),
-  ).toBe(`--aaa required
-
-Version: ${packageName} ${version}
-Usage:
-  node ${packageName} --aaa parameter [--] [unnamed_parameters...]
-
-Options:
-  --aaa parameter
-    test
-  [--] [unnamed_parameters...]
-`);
-});
-test('helpString', () => {
-  expect(parse({ a: {} }, [])[helpString])
-    .toBe(`Version: ${packageName} ${version}
-Usage:
-  node ${packageName} [-a parameter]
-
-Options:
-  -a parameter
-`);
-});
-
-test('min only', () => {
-  expect(
-    parse({ a: { type: 'number', constraints: { min: 10 } } }, ['-a', '10']),
-  ).toEqual({ a: 10 });
-});
-test('max only', () => {
-  expect(
-    parse({ a: { type: 'number', constraints: { max: 10 } } }, ['-a', '10']),
-  ).toEqual({ a: 10 });
-});
-
-test('multiple empty', () => {
-  const options = parse({ a: { multiple: true } }, []);
-  expect(options).toEqual({
-    a: [],
   });
 });
-test('multiple string', () => {
-  expect(
-    parse({ a: { multiple: true } }, ['-a', 'abc', '-a', 'def', '-a', 'ghi']),
-  ).toEqual({ a: ['abc', 'def', 'ghi'] });
+describe('optionalist default', () => {
+  test('string', () => {
+    expect(parse({ aaa: { default: 'aaa' } }, []).aaa).toBe('aaa');
+  });
+  test('number', () => {
+    expect(parse({ aaa: { type: 'number', default: 123 } }, []).aaa).toBe(123);
+  });
+  test('string literal', () => {
+    expect(parse({ aaa: 'aaa' }, []).aaa).toBe('aaa');
+  });
+  test('number literal', () => {
+    expect(parse({ aaa: 123 }, []).aaa).toBe(123);
+  });
+  test('string falsy', () => {
+    expect(parse({ aaa: { default: '' } }, []).aaa).toBe('');
+  });
+  test('number falsy', () => {
+    expect(parse({ aaa: { type: 'number', default: 0 } }, []).aaa).toBe(0);
+  });
+  test('string literal falsy', () => {
+    expect(parse({ aaa: '' }, []).aaa).toBe('');
+  });
+  test('number literal falsy', () => {
+    expect(parse({ aaa: 0 }, []).aaa).toBe(0);
+  });
 });
+describe('boolean multiple', () => {
+  test('no constraints', () => {
+    const opt = { aaa: { type: 'boolean', multiple: true } } as const;
+    for (let count = 0; count < 1000; ++count) {
+      expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
+    }
+  });
+  test('constraints.max: 2', () => {
+    const opt = {
+      aaa: { type: 'boolean', multiple: true, constraints: { max: 2 } },
+    } as const;
+    for (let count = 0; count <= opt.aaa.constraints.max; ++count) {
+      expect(parse(opt, Array(count).fill('--aaa')).aaa).toBe(count);
+    }
+    expect(() =>
+      parse(opt, Array(opt.aaa.constraints.max + 1).fill('--aaa')),
+    ).toThrow('Exceeded max count(2): --aaa');
+  });
+});
+describe('unnamed constraints', () => {
+  test('too few without example', () => {
+    expect(() => parse({ [unnamed]: { min: 2, max: 3 } }, ['111'])).toThrow(
+      'At least 2 unnamed_parameters required.',
+    );
+  });
+  test('too few with example', () => {
+    expect(() =>
+      parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, ['111']),
+    ).toThrow('At least 2 ppp required.');
+  });
+  test('too match without example', () => {
+    expect(() =>
+      parse({ [unnamed]: { min: 2, max: 3 } }, ['111', '222', '333', '444']),
+    ).toThrow('Too many unnamed_parameters specified(up to 3).');
+  });
+  test('too match with example', () => {
+    expect(() =>
+      parse({ [unnamed]: { min: 2, max: 3, example: 'ppp' } }, [
+        '111',
+        '222',
+        '333',
+        '444',
+      ]),
+    ).toThrow('Too many ppp specified(up to 3).');
+  });
+});
+describe('invalid optMap', () => {
+  test('string with number default', () => {
+    expect(() =>
+      // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+      parse({ a: { default: 1 } }, ['-a', '2']),
+    ).toThrow();
+  });
+  test('boolean with number default', () => {
+    expect(() =>
+      // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+      parse({ a: { type: 'boolean', default: 1 } }, ['-a', '2']),
+    ).toThrow();
+  });
+  test('boolean with required', () => {
+    expect(() =>
+      // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+      parse({ a: { type: 'boolean', required: true } }, ['-a', '2']),
+    ).toThrow();
+  });
+  test('number with string default', () => {
+    expect(() =>
+      parse(
+        // @ts-expect-error 例外を発生させるためエラーになる組み合わせを指定
+        { a: { type: 'number', default: '1' } },
+        ['-a', '2'],
+      ),
+    ).toThrow();
+  });
+  test('unknown type', () => {
+    // @ts-expect-error 例外を発生させるためエラーになるtypeを指定
+    expect(() => parse({ a: { type: 'unknown' } })).toThrow();
+  });
 
-test('multiple number', () => {
-  expect(
-    parse({ a: { type: 'number', multiple: true } }, [
-      '-a',
-      '10',
-      '-a',
-      '20',
-      '-a',
-      '30',
-    ]),
-  ).toEqual({ a: [10, 20, 30] });
-});
-test('duplicate string', () => {
-  expect(() => parse({ a: {} }, ['-a', 'abc', '-a', 'def'])).toThrow(
-    'Duplicate -a: abc, def',
-  );
-});
+  test('empty option name', () => {
+    expect(() => parse({ '': {} })).toThrow('empty option name');
+  });
 
-test('duplicate number', () => {
-  expect(() =>
-    parse({ a: { type: 'number' } }, ['-a', '10', '-a', '20']),
-  ).toThrow('Duplicate -a: 10, 20');
-});
-
-test('duplicate flag', () => {
-  expect(() => parse({ a: { type: 'boolean' } }, ['-a', '-a'])).toThrow(
-    'Duplicate -a',
-  );
-});
-
-test('invalid optMap', () => {
-  expect(() => parse({ '': {} })).toThrow('empty option name');
-  expect(() => parse({ '-': {} })).toThrow('Invalid option name: -');
-});
-
-test('pattern constraints', () => {
-  expect(parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb=']).a).toBe(
-    'aaabbb=',
-  );
-  expect(
-    () => parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']).a,
-  ).toThrow('-a does not match /^\\w+=/.: aaabbb');
-});
-test('string constraints array caseSensitive', () => {
-  const opt = {
-    aaa: { constraints: ['aaa', 'bbb', 'ccc'] },
-  } as const;
-  expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
-  expect(parse(opt, ['--aaa', 'bbb']).aaa).toBe('bbb');
-  expect(parse(opt, ['--aaa', 'ccc']).aaa).toBe('ccc');
-  expect(() => parse(opt, ['--aaa', 'AAA'])).toThrow(
-    '--aaa must be one of aaa, bbb, ccc.: AAA',
-  );
-});
-test('string constraints array ignoreCase', () => {
-  const opt = {
-    aaa: { constraints: ['aaa', 'bbb', 'ccc'], ignoreCase: true },
-  } as const;
-  expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
-  expect(parse(opt, ['--aaa', 'BBB']).aaa).toBe('bbb');
-  expect(parse(opt, ['--aaa', 'CcC']).aaa).toBe('ccc');
-  expect(() => parse(opt, ['--aaa', 'ddd'])).toThrow(
-    '--aaa must be one of aaa, bbb, ccc.: ddd',
-  );
-});
-
-test('number constraints array', () => {
-  const opt = {
-    aaa: { type: 'number', constraints: [1, 3, 5] },
-  } as const;
-  expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
-  expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
-  expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
-  expect(() => parse(opt, ['--aaa', '2'])).toThrow(
-    '--aaa must be one of 1, 3, 5.: 2',
-  );
-});
-test('number constraints array & autoAdjust', () => {
-  const opt = {
-    aaa: { type: 'number', constraints: [1, 3, 5], autoAdjust: true },
-  } as const;
-  expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
-  expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
-  expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
-  expect(parse(opt, ['--aaa', '0']).aaa).toBe(1);
-  expect(parse(opt, ['--aaa', '2']).aaa).toBe(1);
-  expect(parse(opt, ['--aaa', '4']).aaa).toBe(3);
-  expect(parse(opt, ['--aaa', '6']).aaa).toBe(5);
-});
-
-test('min', () => {
-  const opt = {
-    a: { type: 'number', constraints: { min: 1 } },
-  } as const;
-  expect(parse(opt, ['-a', '1']).a).toBe(1);
-  expect(() => parse(opt, ['-a', '0.9']).a).toThrow(
-    '-a must be greater than or equal to 1.: 0.9',
-  );
-});
-test('minExclusive', () => {
-  const opt = {
-    a: { type: 'number', constraints: { minExclusive: 1 } },
-  } as const;
-  expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
-  expect(() => parse(opt, ['-a', '1']).a).toThrow(
-    '-a must be greater than 1.: 1',
-  );
-});
-
-test('max', () => {
-  const opt = {
-    a: { type: 'number', constraints: { max: 10 } },
-  } as const;
-  expect(parse(opt, ['-a', '10']).a).toBe(10);
-  expect(() => parse(opt, ['-a', '10.1']).a).toThrow(
-    '-a must be less than or equal to 10.: 10.1',
-  );
-});
-
-test('maxExclusive', () => {
-  const opt = {
-    a: { type: 'number', constraints: { maxExclusive: 10 } },
-  } as const;
-  expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
-  expect(() => parse(opt, ['-a', '10']).a).toThrow(
-    '-a must be less than 10.: 10',
-  );
-});
-test('min & autoAdjust', () => {
-  const opt = {
-    a: { type: 'number', constraints: { min: 1 }, autoAdjust: true },
-  } as const;
-  expect(parse(opt, ['-a', '1']).a).toBe(1);
-  expect(parse(opt, ['-a', '0.9']).a).toBe(1);
-});
-test('minExclusive & autoAdjust', () => {
-  const opt = {
-    a: { type: 'number', constraints: { minExclusive: 1 }, autoAdjust: true },
-  } as const;
-  expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
-  expect(parse(opt, ['-a', '1']).a).toBeGreaterThan(1);
-});
-
-test('max & autoAdjust', () => {
-  const opt = {
-    a: { type: 'number', constraints: { max: 10 }, autoAdjust: true },
-  } as const;
-  expect(parse(opt, ['-a', '10']).a).toBe(10);
-  expect(parse(opt, ['-a', '10.1']).a).toBe(10);
-});
-
-test('maxExclusive & autoAdjust', () => {
-  const opt = {
-    a: { type: 'number', constraints: { maxExclusive: 10 }, autoAdjust: true },
-  } as const;
-  expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
-  expect(parse(opt, ['-a', '10']).a).toBeLessThan(10);
-});
-test('max&maxExclusive', () => {
-  expect(() =>
-    parse(
-      // @ts-expect-error maxとmaxExclusiveは同時に指定できない
-      { a: { type: 'number', constraints: { max: 11, maxExclusive: 10 } } },
-      [],
-    ),
-  ).toThrow();
-  expect(() =>
-    parse(
-      // @ts-expect-error minとminExclusiveは同時に指定できない
-      { a: { type: 'number', constraints: { min: 11, minExclusive: 10 } } },
-      [],
-    ),
-  ).toThrow();
-  // @ts-expect-error min、minExclusive、max、maxExclusiveのどれも指定しないのはエラー
-  expect(() => parse({ a: { type: 'number', constraints: {} } }, [])).toThrow();
-});
-describe('invalid constraints', () => {
+  test('invalid option name', () => {
+    expect(() => parse({ '-': {} })).toThrow('Invalid option name: -');
+  });
+  test('max and maxExclusive', () => {
+    expect(() =>
+      parse(
+        // @ts-expect-error maxとmaxExclusiveは同時に指定できない
+        { a: { type: 'number', constraints: { max: 11, maxExclusive: 10 } } },
+        [],
+      ),
+    ).toThrow();
+  });
+  test('min and minExclusive', () => {
+    expect(() =>
+      parse(
+        // @ts-expect-error minとminExclusiveは同時に指定できない
+        { a: { type: 'number', constraints: { min: 11, minExclusive: 10 } } },
+        [],
+      ),
+    ).toThrow();
+  });
+  test('None of min, minExclusive, max, maxExclusive', () => {
+    expect(() =>
+      // @ts-expect-error min、minExclusive、max、maxExclusiveのどれも指定しないのはエラー
+      parse({ a: { type: 'number', constraints: {} } }, []),
+    ).toThrow();
+  });
   test('empty string constraints array', () => {
     // @ts-expect-error constraintsに空配列は指定できない
     expect(() => parse({ a: { constraints: [] } })).toThrow();
@@ -780,6 +315,427 @@ describe('invalid constraints', () => {
       // @ts-expect-error boolean型のconstraintsには指定できない
       parse({ a: { type: 'boolean', constraints: true } }),
     ).toThrow();
+  });
+  // 組み合わせエラーチェック
+  test('boolean required', () => {
+    expect(() =>
+      // @ts-expect-error booleanにはrequiredを指定できない
+      parse({ aaa: { type: 'boolean', required: true } }),
+    ).toThrow();
+  });
+  test('boolean default', () => {
+    expect(() =>
+      // @ts-expect-error booleanにはdefaultを指定できない
+      parse({ bbb: { type: 'boolean', default: 'true' } }),
+    ).toThrow();
+  });
+  test('alone required (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+      parse({ ccc: { alone: true, required: true } }),
+    ).toThrow();
+  });
+  test('alone required number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
+      parse({ ddd: { type: 'number', alone: true, required: true } }),
+    ).toThrow();
+  });
+  test('alone default (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+      parse({ eee: { alone: true, default: 'true' } }),
+    ).toThrow();
+  });
+  test('alone default number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
+      parse({ fff: { type: 'number', alone: true, default: 1 } }),
+    ).toThrow();
+  });
+  test('required default (string)', () => {
+    expect(() =>
+      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+      parse({ ggg: { required: true, default: 'true' } }),
+    ).toThrow();
+  });
+  test('required default number', () => {
+    expect(() =>
+      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
+      parse({ hhh: { type: 'number', required: true, default: 1 } }),
+    ).toThrow();
+  });
+  test('alone multiple (string)', () => {
+    expect(() =>
+      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
+      parse({ iii: { alone: true, multiple: true } }),
+    ).toThrow();
+  });
+  test('required multiple (string)', () => {
+    expect(() =>
+      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
+      parse({ jjj: { required: true, multiple: true } }),
+    ).toThrow();
+  });
+  test('multiple default (string)', () => {
+    expect(() =>
+      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
+      parse({ kkk: { default: '', multiple: true } }),
+    ).toThrow();
+  });
+  test('alone multiple number', () => {
+    expect(() =>
+      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
+      parse({ lll: { type: 'number', alone: true, multiple: true } }),
+    ).toThrow();
+  });
+  test('required multiple number', () => {
+    expect(() =>
+      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
+      parse({ mmm: { type: 'number', required: true, multiple: true } }),
+    ).toThrow();
+  });
+  test('multiple default number', () => {
+    expect(() =>
+      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
+      parse({ nnn: { type: 'number', default: 1, multiple: true } }),
+    ).toThrow();
+  });
+  test('deprecated property: nature: alone without type', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { nature: 'alone' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: alone with string type', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { type: 'string', nature: 'alone' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: alone with boolean type', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { type: 'boolean', nature: 'alone' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: required', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { type: 'number', nature: 'required' } }, []),
+    ).toThrow();
+  });
+  test('deprecated property: nature: default', () => {
+    expect(() =>
+      // @ts-expect-error natureを指定するとエラーになることの確認
+      parse({ abc: { type: 'number', nature: ['default', 1] } }, []),
+    ).toThrow();
+  });
+});
+describe('helpstring', () => {
+  test('process.argv', () => {
+    let saved;
+    [saved, process.argv] = [process.argv, ['abc', 'def', 'ghi']];
+    try {
+      expect(parse({ a: {}, b: {}, c: {} })[unnamed]).toEqual(['ghi']);
+    } finally {
+      process.argv = saved;
+    }
+  });
+});
+describe('showUsageOnError', () => {
+  /**
+   * procを実行中に、streamへ出力された内容を文字列として返す。
+   *
+   * procが非同期の場合は、非同期で返す。
+   *
+   * @param {NodeJS.WriteStream} stream
+   * @param {() => Promise<unknown>} proc
+   * @returns {Promise<string>}
+   */
+  function stream(
+    stream: NodeJS.WriteStream,
+    proc: () => Promise<unknown>,
+  ): Promise<string>;
+  /**
+   * procを実行中に、streamへ出力された内容を文字列として返す。
+   *
+   * procが非同期の場合は、非同期で返す。
+   *
+   * @param {NodeJS.WriteStream} stream
+   * @param {() => Promise<unknown>} proc
+   * @returns {Promise<string>}
+   */
+  function stream(stream: NodeJS.WriteStream, proc: () => unknown): string;
+  // 実装
+  function stream(
+    stream: NodeJS.WriteStream,
+    proc: () => unknown,
+  ): string | Promise<string> {
+    // 出力バッファ
+    let buffer = Buffer.of();
+    // モック
+    const mock = jest.spyOn(stream, 'write').mockImplementation(str => {
+      // 書き込みをバッファに溜めていく
+      buffer = Buffer.concat([buffer, Buffer.from(str)]);
+      return true;
+    });
+    // モックを元に戻すかどうか
+    let restorable = true;
+    try {
+      const result = proc();
+      if (result instanceof Promise) {
+        // 非同期実行するためにこの関数内ではモックを元に戻さない
+        restorable = false;
+        return (async () => {
+          try {
+            await result;
+            // バッファの内容を返す
+            return buffer.toString('utf8');
+          } finally {
+            // こちらでは問答無用で元に戻す
+            mock.mockRestore();
+          }
+        })();
+      }
+      // バッファの内容を返す
+      return buffer.toString('utf8');
+    } finally {
+      // 非同期実行を開始する場合は元に戻さない
+      if (restorable) {
+        mock.mockRestore();
+      }
+    }
+  }
+
+  test('showUsageOnError', () => {
+    expect(
+      stream(process.stderr, () => {
+        expect(() => {
+          parse(
+            {
+              [helpString]: {
+                showUsageOnError: true,
+              },
+              aaa: {
+                describe: 'test',
+                required: true,
+              },
+              [unnamed]: {
+                min: 0,
+                max: Infinity,
+              },
+            },
+            [],
+          );
+        }).toExitProcess(1);
+      }),
+    ).toBe(`--aaa required
+
+Version: ${packageName} ${version}
+Usage:
+  node ${packageName} --aaa parameter [--] [unnamed_parameters...]
+
+Options:
+  --aaa parameter
+    test
+  [--] [unnamed_parameters...]
+`);
+  });
+});
+describe('helpString', () => {
+  test('helpString', () => {
+    expect(parse({ a: {} }, [])[helpString])
+      .toBe(`Version: ${packageName} ${version}
+Usage:
+  node ${packageName} [-a parameter]
+
+Options:
+  -a parameter
+`);
+  });
+});
+describe('constraints', () => {
+  test('min only', () => {
+    expect(
+      parse({ a: { type: 'number', constraints: { min: 10 } } }, ['-a', '10']),
+    ).toEqual({ a: 10 });
+  });
+  test('max only', () => {
+    expect(
+      parse({ a: { type: 'number', constraints: { max: 10 } } }, ['-a', '10']),
+    ).toEqual({ a: 10 });
+  });
+  test('pattern constraints', () => {
+    expect(parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb=']).a).toBe(
+      'aaabbb=',
+    );
+    expect(
+      () => parse({ a: { constraints: /^\w+=/ } }, ['-a', 'aaabbb']).a,
+    ).toThrow('-a does not match /^\\w+=/.: aaabbb');
+  });
+  test('string constraints array caseSensitive', () => {
+    const opt = {
+      aaa: { constraints: ['aaa', 'bbb', 'ccc'] },
+    } as const;
+    expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
+    expect(parse(opt, ['--aaa', 'bbb']).aaa).toBe('bbb');
+    expect(parse(opt, ['--aaa', 'ccc']).aaa).toBe('ccc');
+    expect(() => parse(opt, ['--aaa', 'AAA'])).toThrow(
+      '--aaa must be one of aaa, bbb, ccc.: AAA',
+    );
+  });
+  test('string constraints array ignoreCase', () => {
+    const opt = {
+      aaa: { constraints: ['aaa', 'bbb', 'ccc'], ignoreCase: true },
+    } as const;
+    expect(parse(opt, ['--aaa', 'aaa']).aaa).toBe('aaa');
+    expect(parse(opt, ['--aaa', 'BBB']).aaa).toBe('bbb');
+    expect(parse(opt, ['--aaa', 'CcC']).aaa).toBe('ccc');
+    expect(() => parse(opt, ['--aaa', 'ddd'])).toThrow(
+      '--aaa must be one of aaa, bbb, ccc.: ddd',
+    );
+  });
+
+  test('number constraints array', () => {
+    const opt = {
+      aaa: { type: 'number', constraints: [1, 3, 5] },
+    } as const;
+    expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
+    expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
+    expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
+    expect(() => parse(opt, ['--aaa', '2'])).toThrow(
+      '--aaa must be one of 1, 3, 5.: 2',
+    );
+  });
+  test('number constraints array & autoAdjust', () => {
+    const opt = {
+      aaa: { type: 'number', constraints: [1, 3, 5], autoAdjust: true },
+    } as const;
+    expect(parse(opt, ['--aaa', '1']).aaa).toBe(1);
+    expect(parse(opt, ['--aaa', '3']).aaa).toBe(3);
+    expect(parse(opt, ['--aaa', '5']).aaa).toBe(5);
+    expect(parse(opt, ['--aaa', '0']).aaa).toBe(1);
+    expect(parse(opt, ['--aaa', '2']).aaa).toBe(1);
+    expect(parse(opt, ['--aaa', '4']).aaa).toBe(3);
+    expect(parse(opt, ['--aaa', '6']).aaa).toBe(5);
+  });
+
+  test('min', () => {
+    const opt = {
+      a: { type: 'number', constraints: { min: 1 } },
+    } as const;
+    expect(parse(opt, ['-a', '1']).a).toBe(1);
+    expect(() => parse(opt, ['-a', '0.9']).a).toThrow(
+      '-a must be greater than or equal to 1.: 0.9',
+    );
+  });
+  test('minExclusive', () => {
+    const opt = {
+      a: { type: 'number', constraints: { minExclusive: 1 } },
+    } as const;
+    expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
+    expect(() => parse(opt, ['-a', '1']).a).toThrow(
+      '-a must be greater than 1.: 1',
+    );
+  });
+
+  test('max', () => {
+    const opt = {
+      a: { type: 'number', constraints: { max: 10 } },
+    } as const;
+    expect(parse(opt, ['-a', '10']).a).toBe(10);
+    expect(() => parse(opt, ['-a', '10.1']).a).toThrow(
+      '-a must be less than or equal to 10.: 10.1',
+    );
+  });
+
+  test('maxExclusive', () => {
+    const opt = {
+      a: { type: 'number', constraints: { maxExclusive: 10 } },
+    } as const;
+    expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
+    expect(() => parse(opt, ['-a', '10']).a).toThrow(
+      '-a must be less than 10.: 10',
+    );
+  });
+  test('min & autoAdjust', () => {
+    const opt = {
+      a: { type: 'number', constraints: { min: 1 }, autoAdjust: true },
+    } as const;
+    expect(parse(opt, ['-a', '1']).a).toBe(1);
+    expect(parse(opt, ['-a', '0.9']).a).toBe(1);
+  });
+  test('minExclusive & autoAdjust', () => {
+    const opt = {
+      a: { type: 'number', constraints: { minExclusive: 1 }, autoAdjust: true },
+    } as const;
+    expect(parse(opt, ['-a', '1.1']).a).toBe(1.1);
+    expect(parse(opt, ['-a', '1']).a).toBeGreaterThan(1);
+  });
+
+  test('max & autoAdjust', () => {
+    const opt = {
+      a: { type: 'number', constraints: { max: 10 }, autoAdjust: true },
+    } as const;
+    expect(parse(opt, ['-a', '10']).a).toBe(10);
+    expect(parse(opt, ['-a', '10.1']).a).toBe(10);
+  });
+  test('maxExclusive & autoAdjust', () => {
+    const opt = {
+      a: {
+        type: 'number',
+        constraints: { maxExclusive: 10 },
+        autoAdjust: true,
+      },
+    } as const;
+    expect(parse(opt, ['-a', '9.9']).a).toBe(9.9);
+    expect(parse(opt, ['-a', '10']).a).toBeLessThan(10);
+  });
+});
+describe('multiple', () => {
+  test('empty', () => {
+    const options = parse({ a: { multiple: true } }, []);
+    expect(options).toEqual({
+      a: [],
+    });
+  });
+  test('string', () => {
+    expect(
+      parse({ a: { multiple: true } }, ['-a', 'abc', '-a', 'def', '-a', 'ghi']),
+    ).toEqual({ a: ['abc', 'def', 'ghi'] });
+  });
+
+  test('number', () => {
+    expect(
+      parse({ a: { type: 'number', multiple: true } }, [
+        '-a',
+        '10',
+        '-a',
+        '20',
+        '-a',
+        '30',
+      ]),
+    ).toEqual({ a: [10, 20, 30] });
+  });
+});
+describe('duplicate', () => {
+  test('string', () => {
+    expect(() => parse({ a: {} }, ['-a', 'abc', '-a', 'def'])).toThrow(
+      'Duplicate -a: abc, def',
+    );
+  });
+
+  test('number', () => {
+    expect(() =>
+      parse({ a: { type: 'number' } }, ['-a', '10', '-a', '20']),
+    ).toThrow('Duplicate -a: 10, 20');
+  });
+
+  test('flag', () => {
+    expect(() => parse({ a: { type: 'boolean' } }, ['-a', '-a'])).toThrow(
+      'Duplicate -a',
+    );
   });
 });
 
@@ -1138,94 +1094,6 @@ describe('type check Options', () => {
   });
 });
 
-describe('combination error', () => {
-  // 組み合わせエラーチェック
-  test('boolean required', () => {
-    expect(() =>
-      // @ts-expect-error booleanにはrequiredを指定できない
-      parse({ aaa: { type: 'boolean', required: true } }),
-    ).toThrow();
-  });
-  test('boolean default', () => {
-    expect(() =>
-      // @ts-expect-error booleanにはdefaultを指定できない
-      parse({ bbb: { type: 'boolean', default: 'true' } }),
-    ).toThrow();
-  });
-  test('alone required (string)', () => {
-    expect(() =>
-      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
-      parse({ ccc: { alone: true, required: true } }),
-    ).toThrow();
-  });
-  test('alone required number', () => {
-    expect(() =>
-      // @ts-expect-error aloneとrequiredは同じオプションに指定できない
-      parse({ ddd: { type: 'number', alone: true, required: true } }),
-    ).toThrow();
-  });
-  test('alone default (string)', () => {
-    expect(() =>
-      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
-      parse({ eee: { alone: true, default: 'true' } }),
-    ).toThrow();
-  });
-  test('alone default number', () => {
-    expect(() =>
-      // @ts-expect-error aloneとdefaultは同じオプションに指定できない
-      parse({ fff: { type: 'number', alone: true, default: 1 } }),
-    ).toThrow();
-  });
-  test('required default (string)', () => {
-    expect(() =>
-      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
-      parse({ ggg: { required: true, default: 'true' } }),
-    ).toThrow();
-  });
-  test('required default number', () => {
-    expect(() =>
-      // @ts-expect-error requiredとdefaultは同じオプションに指定できない
-      parse({ hhh: { type: 'number', required: true, default: 1 } }),
-    ).toThrow();
-  });
-  test('alone multiple (string)', () => {
-    expect(() =>
-      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
-      parse({ iii: { alone: true, multiple: true } }),
-    ).toThrow();
-  });
-  test('required multiple (string)', () => {
-    expect(() =>
-      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
-      parse({ jjj: { required: true, multiple: true } }),
-    ).toThrow();
-  });
-  test('multiple default (string)', () => {
-    expect(() =>
-      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
-      parse({ kkk: { default: '', multiple: true } }),
-    ).toThrow();
-  });
-  test('alone multiple number', () => {
-    expect(() =>
-      // @ts-expect-error aloneとmultipleは同じオプションに指定できない
-      parse({ lll: { type: 'number', alone: true, multiple: true } }),
-    ).toThrow();
-  });
-  test('required multiple number', () => {
-    expect(() =>
-      // @ts-expect-error requiredとmultipleは同じオプションに指定できない
-      parse({ mmm: { type: 'number', required: true, multiple: true } }),
-    ).toThrow();
-  });
-  test('multiple default number', () => {
-    expect(() =>
-      // @ts-expect-error defaultとmultipleは同じオプションに指定できない
-      parse({ nnn: { type: 'number', default: 1, multiple: true } }),
-    ).toThrow();
-  });
-});
-
 // 型だけチェック
 describe('type check', () => {
   test('named property', () => {
@@ -1493,55 +1361,25 @@ describe('invalid name', () => {
   test('first hyphen', () => {
     expect(() => parse({ '-def': 0 }, [])).toThrow('Invalid option name: -def');
   });
-  test('duplicate name', () => {
+  test('duplicate name by camelCase', () => {
     expect(() => parse({ abcDef: '', 'abc-def': 0 }, [])).toThrow(
       'Duplicate option name: abc-def, abcDef',
     );
   });
-  test('duplicate name#2', () => {
+  test('duplicate name by numbering camelCase', () => {
     expect(() => parse({ abc012: '', 'abc-012': 0 }, [])).toThrow(
       'Duplicate option name: abc-012, abc012',
     );
   });
-  test('duplicate name#3', () => {
+  test('duplicate name by alias and camelCase', () => {
     expect(() =>
       parse({ abc: { alias: 'abc-def' }, 'abc-def': 0 }, []),
     ).toThrow('Duplicate alias name: abc-def, abc');
   });
-  test('duplicate name#4', () => {
+  test('duplicate name by camelCase and alias', () => {
     expect(() =>
       parse({ 'abc-def': 0, abc: { alias: 'abc-def' } }, []),
     ).toThrow('Duplicate alias name: abc, abc-def');
-  });
-  test('deprecated property: nature: alone', () => {
-    expect(() =>
-      // @ts-expect-error natureを指定するとエラーになることの確認
-      parse({ abc: { nature: 'alone' } }, []),
-    ).toThrow();
-  });
-  test('deprecated property: nature: alone', () => {
-    expect(() =>
-      // @ts-expect-error natureを指定するとエラーになることの確認
-      parse({ abc: { type: 'string', nature: 'alone' } }, []),
-    ).toThrow();
-  });
-  test('deprecated property: nature: alone', () => {
-    expect(() =>
-      // @ts-expect-error natureを指定するとエラーになることの確認
-      parse({ abc: { type: 'boolean', nature: 'alone' } }, []),
-    ).toThrow();
-  });
-  test('deprecated property: nature: required', () => {
-    expect(() =>
-      // @ts-expect-error natureを指定するとエラーになることの確認
-      parse({ abc: { type: 'number', nature: 'required' } }, []),
-    ).toThrow();
-  });
-  test('deprecated property: nature: default', () => {
-    expect(() =>
-      // @ts-expect-error natureを指定するとエラーになることの確認
-      parse({ abc: { type: 'number', nature: ['default', 1] } }, []),
-    ).toThrow();
   });
 });
 
@@ -1552,6 +1390,8 @@ describe.each`
 `(
   'autoAdjust $constraint',
   ({ constraint }: { constraint: 'minExclusive' | 'maxExclusive' }) => {
+    const toBeValidConstraint =
+      constraint === 'minExclusive' ? 'toBeGreaterThan' : 'toBeLessThan';
     test.each`
       expression
       ${'0'}
@@ -1612,11 +1452,7 @@ describe.each`
       } as const;
       const next = parse(map, ['-a', String(number)]).a;
       // 制約通りnumberより大きい/小さい数値になっているかどうか確認
-      if (constraint === 'minExclusive') {
-        expect(next).toBeGreaterThan(number);
-      } else {
-        expect(next).toBeLessThan(number);
-      }
+      expect(next)[toBeValidConstraint](number);
       // numberとnextの中間値
       const medium = number + (next - number) / 2;
       // 中間値を計算してもnumberかnextのいずれかに丸められているか確認
