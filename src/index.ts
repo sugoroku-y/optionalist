@@ -1668,7 +1668,7 @@ function makeHelpString(optMap: NormalizedOptionInformationMap): string {
  * 省略時はprocess.argvの3つめから開始する。
  * @throws argsに問題がある場合には{@link CommandLineParsingError}を投げる。
  */
-export function parse<OptMap extends OptionInformationMap>(
+export function parse<const OptMap extends OptionInformationMap>(
   _optMap: OptMap,
   args?: Iterable<string>,
 ): Options<OptMap> {
